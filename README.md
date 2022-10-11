@@ -1,4 +1,6 @@
+# Cloned for Edit for Final Project
 # RMS-Net: Regression and Masking for Soccer Event Spotting
+
 This repository contains the train and test code for the paper _[RMS-Net: Regression and Masking for Soccer Event Spotting](https://arxiv.org/abs/2102.07624)_.
 
 This is an extended codebase for soccer event spotting on _[SoccerNet_v2](https://arxiv.org/pdf/2011.13367.pdf)_, which contains 17 classes (the original masking strategy presented in the RMS-Net paper has not been tested yet on the extended set of classes).
