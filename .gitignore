@@ -12,7 +12,6 @@
 !*.pdf
 !*.txt
 !.gitignore
-!*.code-workspace
 !*.pptx
 !*.yaml
 !*.sh
