@@ -18,3 +18,7 @@
 !*.bat
 __pycache__/
 !*.png
+anno_data/
+frames/
+videos/
+listgame/

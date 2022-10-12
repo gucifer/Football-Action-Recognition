@@ -93,16 +93,21 @@ def main_worker(gpu, args):
     if args.mixed_precision:
         from apex import amp
 
+    if torch.backends.mps.is_available():
+        device = torch.device("mps")
+    elif torch.cuda.is_available():
+        device = torch.device("cuda")
+    else:
+        device = torch.device("cpu")
     print("=> creating model")
-    model = resnet50(pretrained=True).cuda()
+    model = resnet50(pretrained=True).to(device)
     num_ftrs = model.fc.in_features
-    model.temporal_conv1 = torch.nn.Conv1d(in_channels=num_ftrs, out_channels=512, kernel_size=9, stride=1, padding=4).cuda()
-    model.temporal_conv2 = torch.nn.Conv1d(in_channels=512, out_channels=256, kernel_size=9, stride=1, padding=4).cuda()
-    model.fc2 = torch.nn.Linear(256, 128).cuda()
-    model.fc_class = torch.nn.Linear(128, args.num_classes).cuda()
-    model.fc_t_shift = torch.nn.Linear(128, 1).cuda()
-
-    criterion = torch.nn.CrossEntropyLoss().cuda(args.gpu)
+    model.temporal_conv1 = torch.nn.Conv1d(in_channels=num_ftrs, out_channels=512, kernel_size=9, stride=1, padding=4).to(device)
+    model.temporal_conv2 = torch.nn.Conv1d(in_channels=512, out_channels=256, kernel_size=9, stride=1, padding=4).to(device)
+    model.fc2 = torch.nn.Linear(256, 128).to(device)
+    model.fc_class = torch.nn.Linear(128, args.num_classes).to(device)
+    model.fc_t_shift = torch.nn.Linear(128, 1).to(device)
+    criterion = torch.nn.CrossEntropyLoss().to(device)
 
     optim = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
 
