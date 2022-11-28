@@ -46,7 +46,7 @@ class SoccerNetClips(Dataset):
     def __init__(self, path, features="ResNET_PCA512.npy", split=["train"], version=1, 
                 framerate=2, window_size=15):
         self.path = path
-        self.listGames = [getListGames(split)[0]]
+        self.listGames = getListGames(split)
         self.features = features
         self.window_size_frame = window_size*framerate
         self.version = version
@@ -60,7 +60,7 @@ class SoccerNetClips(Dataset):
 
         logging.info("Checking/Download features and labels locally")
         downloader = SoccerNetDownloader(path)
-        downloader.downloadGames(files=[self.labels, f"1_{self.features}", f"2_{self.features}"], split=split, verbose=False,randomized=True, listgames = self.listGames)
+        downloader.downloadGames(files=[self.labels, f"1_{self.features}", f"2_{self.features}"], split=split, verbose=False,randomized=False)
 
 
         logging.info("Pre-compute clips")
@@ -83,9 +83,9 @@ class SoccerNetClips(Dataset):
             labels = json.load(open(os.path.join(self.path, game, self.labels)))
 
             label_half1 = np.zeros((feat_half1.shape[0], self.num_classes+1))
-            label_half1[:,0]=1 # those are BG classes
+            label_half1[:,-1]=1 # those are BG classes
             label_half2 = np.zeros((feat_half2.shape[0], self.num_classes+1))
-            label_half2[:,0]=1 # those are BG classes
+            label_half2[:,-1]=1 # those are BG classes
 
 
             for annotation in labels["annotations"]:
@@ -116,18 +116,18 @@ class SoccerNetClips(Dataset):
                     continue
 
                 if half == 1:
-                    label_half1[frame//self.window_size_frame][0] = 0 # not BG anymore
+                    label_half1[frame//self.window_size_frame][-1] = 0 # not BG anymore
                     label_half1[frame//self.window_size_frame][label+1] = 1 # that's my class
 
                 if half == 2:
-                    label_half2[frame//self.window_size_frame][0] = 0 # not BG anymore
+                    label_half2[frame//self.window_size_frame][-1] = 0 # not BG anymore
                     label_half2[frame//self.window_size_frame][label+1] = 1 # that's my class
             
             self.game_feats.append(feat_half1)
             self.game_feats.append(feat_half2)
             self.game_labels.append(label_half1)
             self.game_labels.append(label_half2)
-
+            break
         self.game_feats = np.concatenate(self.game_feats)
         self.game_labels = np.concatenate(self.game_labels)
 
@@ -255,7 +255,7 @@ class SoccerNetClipsTesting(Dataset):
 if __name__ == "__main__":
     dataset_Train = SoccerNetClips(
         # path="/content/drive/.shortcut-targets-by-id/1H509_zeV7bta5BudwCznjP0EWrCa_LCJ/Deep Learning - Final Project/assets", 
-        path = "/Users/Saurav.Suman/Documents/Git/Gatech/dl_cse_7643/final_project/code/data/assets",
+        path = "data/assets",
         features="ResNET_TF2_PCA512.npy",
         version=2, 
         window_size=20) # for 20 seconds video

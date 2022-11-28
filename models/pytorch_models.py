@@ -39,7 +39,7 @@ class AlphaModel(nn.Module):
 
         self.classification_model = nn.Sequential(
             nn.Linear(in_features=64, out_features=self.num_classes),
-            nn.Softmax()
+            nn.Softmax(dim=1)
         )
 
         self.regression_model = nn.Sequential(

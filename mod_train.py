@@ -121,7 +121,7 @@ def main_worker(gpu, args):
 
     dataset_train = SoccerNetClips(
         # path="/content/drive/.shortcut-targets-by-id/1H509_zeV7bta5BudwCznjP0EWrCa_LCJ/Deep Learning - Final Project/assets", 
-        path = "/Users/Saurav.Suman/Documents/Git/Gatech/dl_cse_7643/final_project/code/data/assets",
+        path = "data/assets",
         features="ResNET_TF2_PCA512.npy",
         split=["train"],
         version=2, 
@@ -131,7 +131,7 @@ def main_worker(gpu, args):
 
     dataset_val = SoccerNetClips(
         # path="/content/drive/.shortcut-targets-by-id/1H509_zeV7bta5BudwCznjP0EWrCa_LCJ/Deep Learning - Final Project/assets", 
-        path = "/Users/Saurav.Suman/Documents/Git/Gatech/dl_cse_7643/final_project/code/data/assets",
+        path = "data/assets",
         features="ResNET_TF2_PCA512.npy", 
         split=["valid"],
         version=2, 
@@ -175,7 +175,7 @@ def main_worker(gpu, args):
         # if e != 0:
         #     dataloader_train.dataset.update_background_samples()
         print("=> Training begins...")
-        train(dataloader_train, model, criterion, optim, scheduler, e, args)
+        train(dataloader_train, model, criterion, optim, scheduler, e, args, device)
 
         print("=> Validation begins...")
         map = validate(dataloader_val, model, criterion, e, args)
@@ -204,7 +204,7 @@ def main_worker(gpu, args):
             }, is_best, args.out_dir)
 
 
-def train(dataloader_train, model, criterion, optim, scheduler, epoch, args):
+def train(dataloader_train, model, criterion, optim, scheduler, epoch, args, device):
     model.train()
     # for m in model.modules(): #freeze BatchNorm layers
     #     if isinstance(m, torch.nn.BatchNorm2d):
@@ -218,16 +218,17 @@ def train(dataloader_train, model, criterion, optim, scheduler, epoch, args):
     # for it, (video, label, rel_offset, match, half, start_frame) in enumerate(dataloader_train):
     for it, (features, label) in enumerate(dataloader_train):
         it_counter += 1
-
+        features = features.to(device)
+        # label = label.to(device)
         # if args.gpu is not None:
         #     video = video.cuda(args.gpu, non_blocking=True)
         #     label = label.cuda(args.gpu, non_blocking=True)
         #     rel_offset = rel_offset.cuda(args.gpu, non_blocking=True)
-
         out, pred_rel_offset = model(features)
         pred_rel_offset = pred_rel_offset.squeeze(1)
 
-        non_background_indexes_gt = (label != LABELS["background"])
+        # non_background_indexes_gt = (label != LABELS["background"])
+        non_background_indexes_gt = (label[:, LABELS["background"]] != 1)
 
         time_shift_loss = torch.nn.functional.mse_loss(pred_rel_offset[non_background_indexes_gt], rel_offset[non_background_indexes_gt].float()) #let's compute the time-shift loss only for not background events
 
