@@ -4,7 +4,7 @@ import numpy as np
 import random
 import os
 import time
-
+import socket
 
 from tqdm import tqdm
 
@@ -58,7 +58,10 @@ class SoccerNetClips(Dataset):
 
         logging.info("Checking/Download features and labels locally")
         downloader = SoccerNetDownloader(path)
-        downloader.downloadGames(files=[self.labels, f"1_{self.features}", f"2_{self.features}"], split=split, verbose=False,randomized=False, n_download = n_download)
+        if ".local" in socket.gethostname():
+            downloader.downloadGames(files=[self.labels, f"1_{self.features}", f"2_{self.features}"], split=split, verbose=False,randomized=False, n_download = n_download)
+        else:
+            downloader.downloadGames(files=[self.labels, f"1_{self.features}", f"2_{self.features}"], split=split, verbose=False,randomized=False)
 
 
         logging.info("Pre-compute clips")
