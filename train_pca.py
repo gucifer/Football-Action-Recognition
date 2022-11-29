@@ -10,7 +10,7 @@ from data.load_data_utils import LABELS, REVERSE_LABELS, FPS
 from utils import nms, standard_nms
 import math
 from ActionSpotting import evaluate
-from SoccerData import SoccerNetClips
+from data.SoccerData import SoccerNetClips
 from models.pytorch_models import *
 import sys
 import json
@@ -121,7 +121,7 @@ def main_worker(gpu, args):
 
     dataset_train = SoccerNetClips(
         # path="/content/drive/.shortcut-targets-by-id/1H509_zeV7bta5BudwCznjP0EWrCa_LCJ/Deep Learning - Final Project/assets", 
-        path = "data/assets",
+        path = args.labels_path,
         features="ResNET_TF2_PCA512.npy",
         split=["train"],
         version=2,
@@ -133,7 +133,7 @@ def main_worker(gpu, args):
 
     dataset_val = SoccerNetClips(
         # path="/content/drive/.shortcut-targets-by-id/1H509_zeV7bta5BudwCznjP0EWrCa_LCJ/Deep Learning - Final Project/assets", 
-        path = "data/assets",
+        path = args.labels_path,
         features="ResNET_TF2_PCA512.npy", 
         split=["valid"],
         version=2,

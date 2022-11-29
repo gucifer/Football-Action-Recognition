@@ -15,7 +15,7 @@ import json
 
 from SoccerNet.Downloader import getListGames
 from SoccerNet.Downloader import SoccerNetDownloader
-from data.load_data_utils import LABELS
+from .load_data_utils import LABELS
 
 
 def feats2clip(feats, stride, clip_length, padding = "replicate_last", off=0):
