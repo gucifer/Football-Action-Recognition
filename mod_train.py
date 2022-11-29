@@ -124,7 +124,8 @@ def main_worker(gpu, args):
         path = "data/assets",
         features="ResNET_TF2_PCA512.npy",
         split=["train"],
-        version=2, 
+        version=2,
+        n_download=2,
         window_size=20) # for 20 seconds video
 
     dataloader_train = DataLoader(dataset_train, batch_size=args.batch_size, shuffle=False, num_workers=args.workers)
@@ -134,7 +135,8 @@ def main_worker(gpu, args):
         path = "data/assets",
         features="ResNET_TF2_PCA512.npy", 
         split=["valid"],
-        version=2, 
+        version=2,
+        n_download=1,
         window_size=20) # for 20 seconds video
 
     dataloader_val = DataLoader(dataset_val, batch_size=args.batch_size, shuffle=False, num_workers=args.workers)
@@ -216,7 +218,7 @@ def train(dataloader_train, model, criterion, optim, scheduler, epoch, args, dev
 
     it_counter = epoch * len(dataloader_train)
     # for it, (video, label, rel_offset, match, half, start_frame) in enumerate(dataloader_train):
-    for it, (features, label) in enumerate(dataloader_train):
+    for it, (features, label, rel_offset) in enumerate(dataloader_train):
         it_counter += 1
         features = features.to(device)
         # label = label.to(device)
