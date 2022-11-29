@@ -99,7 +99,7 @@ def main_worker(gpu, args):
         from apex import amp
 
     if torch.backends.mps.is_available():
-        device = torch.device("mps")
+        device = torch.device("cpu")
     elif torch.cuda.is_available():
         device = torch.device("cuda")
     else:
@@ -122,7 +122,6 @@ def main_worker(gpu, args):
     print("=> Initializing datasets...")
 
     dataset_train = SoccerNetClips(
-        # path="/content/drive/.shortcut-targets-by-id/1H509_zeV7bta5BudwCznjP0EWrCa_LCJ/Deep Learning - Final Project/assets", 
         path = args.labels_path,
         features="ResNET_TF2_PCA512.npy",
         split=["train"],
@@ -134,7 +133,6 @@ def main_worker(gpu, args):
     dataloader_train = DataLoader(dataset_train, batch_size=args.batch_size, shuffle=False, num_workers=args.workers)
 
     dataset_val = SoccerNetClips(
-        # path="/content/drive/.shortcut-targets-by-id/1H509_zeV7bta5BudwCznjP0EWrCa_LCJ/Deep Learning - Final Project/assets", 
         path = args.labels_path,
         features="ResNET_TF2_PCA512.npy", 
         split=["valid"],
@@ -184,7 +182,7 @@ def main_worker(gpu, args):
         train(dataloader_train, model, criterion, optim, scheduler, e, args, device)
 
         print("=> Validation begins...")
-        map = validate(dataloader_val, model, criterion, e, args)
+        map = validate(dataloader_val, model, criterion, e, args, device)
 
         is_best = map > best_map
         if is_best:
@@ -225,6 +223,8 @@ def train(dataloader_train, model, criterion, optim, scheduler, epoch, args, dev
     for it, (features, label, rel_offset, match, half, start_frame) in enumerate(dataloader_train):
         # it_counter += 1
         features = features.to(device)
+        label = label.to(device)
+        rel_offset = rel_offset.to(device)
         # label = label.to(device)
         # if args.gpu is not None:
         #     video = video.cuda(args.gpu, non_blocking=True)
@@ -263,7 +263,7 @@ def train(dataloader_train, model, criterion, optim, scheduler, epoch, args, dev
             progress.printt((it+1))
 
 
-def validate(dataloader_val, model, criterion, epoch, args):
+def validate(dataloader_val, model, criterion, epoch, args, device):
     model.eval()
     losses = AverageMeter('Loss', ':.4e')
     class_loss = AverageMeter('XE Loss', ':.4e')
@@ -279,9 +279,10 @@ def validate(dataloader_val, model, criterion, epoch, args):
             #     label = label.cuda(args.gpu, non_blocking=True)
             #     rel_offset = rel_offset.cuda(args.gpu, non_blocking=True)
             #     start_frame = start_frame.cuda(args.gpu, non_blocking=True)
-
+            features = features.to(device)
+            label = label.to(device)
+            rel_offset = rel_offset.to(device)
             out, pred_rel_offset = model(features)
-
             pred_rel_offset = pred_rel_offset.squeeze(1)
             score, cl = torch.max(torch.nn.functional.softmax(out, dim=1), dim=1)
 

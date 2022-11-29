@@ -88,13 +88,13 @@ class SoccerNetClips(Dataset):
             # Load labels
             labels = json.load(open(os.path.join(self.path, game, self.labels)))
 
-            label_half1 = np.zeros((feat_half1.shape[0], self.num_classes+1))
+            label_half1 = np.zeros((feat_half1.shape[0], self.num_classes+1), dtype=np.float32)
             label_half1[:,-1]=1 # those are BG classes
-            label_half2 = np.zeros((feat_half2.shape[0], self.num_classes+1))
+            label_half2 = np.zeros((feat_half2.shape[0], self.num_classes+1), dtype=np.float32)
             label_half2[:,-1]=1 # those are BG classes
 
-            rel_offset1 = np.zeros((feat_half1.shape[0]))
-            rel_offset2 = np.zeros((feat_half2.shape[0]))
+            rel_offset1 = np.zeros((feat_half1.shape[0]), dtype=np.float32)
+            rel_offset2 = np.zeros((feat_half2.shape[0]), dtype=np.float32)
 
 
             for annotation in labels["annotations"]:
