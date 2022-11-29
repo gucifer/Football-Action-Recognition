@@ -104,6 +104,8 @@ def main_worker(gpu, args):
         device = torch.device("cuda")
     else:
         device = torch.device("cpu")
+
+    print(f"Device used {device}")
     print("=> creating model")
 
 
@@ -191,21 +193,22 @@ def main_worker(gpu, args):
 
         print("Best mAP so far: " + str(best_map) + " at epoch: " + str(best_epoch))
         #ToDo: add amp.state_dict()
-        if args.mixed_precision:
-            save_checkpoint({
-                'epoch': e + 1,
-                'state_dict': model.state_dict(),
-                'best_map': best_map,
-                'optimizer': optim.state_dict(),
-                'amp': amp.state_dict()
-            }, is_best, args.out_dir)
-        else:
-            save_checkpoint({
-                'epoch': e + 1,
-                'state_dict': model.state_dict(),
-                'best_map': best_map,
-                'optimizer': optim.state_dict(),
-            }, is_best, args.out_dir)
+        if e%10 == 0:
+            if args.mixed_precision:
+                save_checkpoint({
+                    'epoch': e + 1,
+                    'state_dict': model.state_dict(),
+                    'best_map': best_map,
+                    'optimizer': optim.state_dict(),
+                    'amp': amp.state_dict()
+                }, is_best, args.out_dir)
+            else:
+                save_checkpoint({
+                    'epoch': e + 1,
+                    'state_dict': model.state_dict(),
+                    'best_map': best_map,
+                    'optimizer': optim.state_dict(),
+                }, is_best, args.out_dir)
 
 
 def train(dataloader_train, model, criterion, optim, scheduler, epoch, args, device):
@@ -259,7 +262,7 @@ def train(dataloader_train, model, criterion, optim, scheduler, epoch, args, dev
         # scheduler.step(it_counter)
         scheduler.step()
 
-        if (it+1) % 10 == 0:
+        if (it+1) % 100 == 0:
             progress.printt((it+1))
 
 
@@ -282,6 +285,7 @@ def validate(dataloader_val, model, criterion, epoch, args, device):
             features = features.to(device)
             label = label.to(device)
             rel_offset = rel_offset.to(device)
+            start_frame = start_frame.to(device)
             out, pred_rel_offset = model(features)
             pred_rel_offset = pred_rel_offset.squeeze(1)
             score, cl = torch.max(torch.nn.functional.softmax(out, dim=1), dim=1)
@@ -310,9 +314,9 @@ def validate(dataloader_val, model, criterion, epoch, args, device):
             # print(criterion(out, label))
             # print("")
             
-            if (it+1) % 10 == 0:
+            if (it+1) % 100 == 0:
                 progress.printt((it+1))
-
+        # if epoch % 10 == 0:
         predictions_path = jh.save_json(epoch, args.testing_split, args.nms_mode, args.nms)
         results = evaluate(SoccerNet_path=args.labels_path, Predictions_path=predictions_path, split=(args.testing_split if args.testing_split!="val" else "valid"), list_games=dataloader_val.dataset.listGames)
         print("Average mAP: ", results["a_mAP"])
