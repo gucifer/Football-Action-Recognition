@@ -1,22 +1,22 @@
-from data.SoccerNetv2_dataset import SoccerNet
+# from data.SoccerNetv2_dataset import SoccerNet
 from torch.utils.data import DataLoader
 import torch
 import numpy as np
 import random
 import shutil
 import argparse
-from models.resnet import resnet50
+# from models.resnet import resnet50
 from data.load_data_utils import LABELS, REVERSE_LABELS, FPS
 from utils import nms, standard_nms
 import math
-from SoccerNet.Evaluation.ActionSpotting import evaluate
+from ActionSpotting import evaluate
 from SoccerData import SoccerNetClips
 from models.pytorch_models import *
 import sys
 import json
 import os
 import errno
-from torch import nn
+# from torch import nn
 
 np.random.seed(123)
 torch.manual_seed(123)
@@ -125,7 +125,8 @@ def main_worker(gpu, args):
         features="ResNET_TF2_PCA512.npy",
         split=["train"],
         version=2,
-        n_download=2,
+        framerate=FPS,
+        n_download=3,
         window_size=20) # for 20 seconds video
 
     dataloader_train = DataLoader(dataset_train, batch_size=args.batch_size, shuffle=False, num_workers=args.workers)
@@ -136,7 +137,8 @@ def main_worker(gpu, args):
         features="ResNET_TF2_PCA512.npy", 
         split=["valid"],
         version=2,
-        n_download=1,
+        framerate=FPS,
+        n_download=3,
         window_size=20) # for 20 seconds video
 
     dataloader_val = DataLoader(dataset_val, batch_size=args.batch_size, shuffle=False, num_workers=args.workers)
@@ -145,7 +147,7 @@ def main_worker(gpu, args):
     # dataset_val = SoccerNet(frames_per_clip=args.frames_per_clip, resize_to=tuple(args.resize_to), split=args.testing_split, frames_path=args.frames_path, labels_path=args.labels_path, listgame_path=args.listgame_path, class_samples_per_epoch=args.class_samples_per_epoch, test_overlap=args.test_overlap)
     # dataloader_val = DataLoader(dataset_val, batch_size=args.batch_size, shuffle=False, num_workers=args.workers)
 
-    # best_map = 0
+    best_map = 0
 
     # if not args.evaluate:
         # dataset_train = SoccerNet(frames_per_clip=args.frames_per_clip, resize_to=tuple(args.resize_to), split=args.training_split, frames_path=args.frames_path, labels_path=args.labels_path, listgame_path=args.listgame_path, class_samples_per_epoch=args.class_samples_per_epoch, test_overlap=args.test_overlap)
@@ -216,10 +218,10 @@ def train(dataloader_train, model, criterion, optim, scheduler, epoch, args, dev
     regr_loss = AverageMeter('MSE Loss', ':.4e')
     progress = ProgressMeter("Training Epoch: [{}]".format(epoch), len(dataloader_train), losses, class_loss, regr_loss)
 
-    it_counter = epoch * len(dataloader_train)
+    # it_counter = epoch * len(dataloader_train)
     # for it, (video, label, rel_offset, match, half, start_frame) in enumerate(dataloader_train):
-    for it, (features, label, rel_offset) in enumerate(dataloader_train):
-        it_counter += 1
+    for it, (features, label, rel_offset, match, half, start_frame) in enumerate(dataloader_train):
+        # it_counter += 1
         features = features.to(device)
         # label = label.to(device)
         # if args.gpu is not None:
@@ -233,13 +235,17 @@ def train(dataloader_train, model, criterion, optim, scheduler, epoch, args, dev
         non_background_indexes_gt = (label[:, LABELS["background"]] != 1)
 
         time_shift_loss = torch.nn.functional.mse_loss(pred_rel_offset[non_background_indexes_gt], rel_offset[non_background_indexes_gt].float()) #let's compute the time-shift loss only for not background events
-
+        # if math.isnan(time_shift_loss):
+        #     halt=1
         loss = criterion(out, label) if math.isnan(time_shift_loss) else criterion(out, label) + args.lam * time_shift_loss
 
-        losses.update(loss.item(), video.shape[0])
-        class_loss.update(criterion(out, label), video.shape[0])
-        regr_loss.update(0 if math.isnan(time_shift_loss) else time_shift_loss.item(), video.shape[0])
-
+        losses.update(loss.item(), out.shape[0])
+        class_loss.update(criterion(out, label), out.shape[0])
+        regr_loss.update(0 if math.isnan(time_shift_loss) else time_shift_loss.item(), out.shape[0])
+        # print(loss)
+        # print(time_shift_loss)
+        # print(criterion(out, label))
+        # print("")
         optim.zero_grad()
         if args.mixed_precision:
             with amp.scale_loss(loss, optim) as scaled_loss:
@@ -248,10 +254,11 @@ def train(dataloader_train, model, criterion, optim, scheduler, epoch, args, dev
             loss.backward()
         optim.step()
 
-        scheduler.step(it_counter)
+        # scheduler.step(it_counter)
+        scheduler.step()
 
-        if it % 10 == 0:
-            progress.printt(it)
+        if (it+1) % 10 == 0:
+            progress.printt((it+1))
 
 
 def validate(dataloader_val, model, criterion, epoch, args):
@@ -264,19 +271,20 @@ def validate(dataloader_val, model, criterion, epoch, args):
     progress = ProgressMeter("Validation Epoch: [{}]".format(epoch), len(dataloader_val), losses, class_loss, regr_loss)
 
     with torch.no_grad():
-        for it, (video, label, rel_offset, match, half, start_frame) in enumerate(dataloader_val):
-            if args.gpu is not None:
-                video = video.cuda(args.gpu, non_blocking=True)
-                label = label.cuda(args.gpu, non_blocking=True)
-                rel_offset = rel_offset.cuda(args.gpu, non_blocking=True)
-                start_frame = start_frame.cuda(args.gpu, non_blocking=True)
+        for it, (features, label, rel_offset, match, half, start_frame) in enumerate(dataloader_val):
+            # if args.gpu is not None:
+            #     video = video.cuda(args.gpu, non_blocking=True)
+            #     label = label.cuda(args.gpu, non_blocking=True)
+            #     rel_offset = rel_offset.cuda(args.gpu, non_blocking=True)
+            #     start_frame = start_frame.cuda(args.gpu, non_blocking=True)
 
-            out, pred_rel_offset = model(video)
+            out, pred_rel_offset = model(features)
 
             pred_rel_offset = pred_rel_offset.squeeze(1)
             score, cl = torch.max(torch.nn.functional.softmax(out, dim=1), dim=1)
 
             non_background_indexes_predicted = (cl != LABELS["background"])
+            # non_background_indexes_predicted = (cl[:, LABELS["background"]] != 1)
             score = score[non_background_indexes_predicted]
             half = [hm for i, hm in enumerate(half) if non_background_indexes_predicted[i]]
             start_frame = start_frame[non_background_indexes_predicted]
@@ -286,19 +294,24 @@ def validate(dataloader_val, model, criterion, epoch, args):
             if len(score) != 0:
                 jh.update_preds(match, half, cl, start_frame, score, pred_rel_offset[non_background_indexes_predicted], args.frames_per_clip)
 
-            non_background_indexes_gt = (label != LABELS["background"])
+            non_background_indexes_gt = (label[:, LABELS["background"]] != 1)
             time_shift_loss = torch.nn.functional.mse_loss(pred_rel_offset[non_background_indexes_gt], rel_offset[non_background_indexes_gt].float())
             loss = criterion(out, label) if math.isnan(time_shift_loss) else criterion(out, label) + args.lam * time_shift_loss
 
-            losses.update(loss.item(), video.shape[0])
-            class_loss.update(criterion(out, label), video.shape[0])
-            regr_loss.update(0 if math.isnan(time_shift_loss) else time_shift_loss.item(), video.shape[0])
-
-            if it % 10 == 0:
-                progress.printt(it)
+            losses.update(loss.item(), out.shape[0])
+            class_loss.update(criterion(out, label), out.shape[0])
+            regr_loss.update(0 if math.isnan(time_shift_loss) else time_shift_loss.item(), out.shape[0])
+            
+            # print(loss)
+            # print(time_shift_loss)
+            # print(criterion(out, label))
+            # print("")
+            
+            if (it+1) % 10 == 0:
+                progress.printt((it+1))
 
         predictions_path = jh.save_json(epoch, args.testing_split, args.nms_mode, args.nms)
-        results = evaluate(SoccerNet_path=args.labels_path, Predictions_path=predictions_path, split=(args.testing_split if args.testing_split!="val" else "valid"))
+        results = evaluate(SoccerNet_path=args.labels_path, Predictions_path=predictions_path, split=(args.testing_split if args.testing_split!="val" else "valid"), list_games=dataloader_val.dataset.listGames)
         print("Average mAP: ", results["a_mAP"])
         print("Average mAP per class: ", results["a_mAP_per_class"])
         print("Average mAP visible: ", results["a_mAP_visible"])

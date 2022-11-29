@@ -15,9 +15,7 @@ import json
 
 from SoccerNet.Downloader import getListGames
 from SoccerNet.Downloader import SoccerNetDownloader
-from SoccerNet.Evaluation.utils import AverageMeter, EVENT_DICTIONARY_V2, INVERSE_EVENT_DICTIONARY_V2
-from SoccerNet.Evaluation.utils import EVENT_DICTIONARY_V1, INVERSE_EVENT_DICTIONARY_V1
-
+from data.load_data_utils import LABELS
 
 
 def feats2clip(feats, stride, clip_length, padding = "replicate_last", off=0):
@@ -46,7 +44,7 @@ class SoccerNetClips(Dataset):
     def __init__(self, path, features="ResNET_PCA512.npy", split=["train"], version=1, 
                 framerate=2, window_size=15, n_download = 500):
         self.path = path
-        self.listGames = getListGames(split)
+        self.listGames = getListGames(split)[:n_download]
         self.features = features
         self.window_size_frame = window_size*framerate
         self.version = version
@@ -54,7 +52,7 @@ class SoccerNetClips(Dataset):
             self.num_classes = 3
             self.labels="Labels.json"
         elif version == 2:
-            self.dict_event = EVENT_DICTIONARY_V2
+            self.dict_event = LABELS
             self.num_classes = 17
             self.labels="Labels-v2.json"
 
@@ -68,10 +66,13 @@ class SoccerNetClips(Dataset):
         self.game_feats = list()
         self.game_labels = list()
         self.rel_offsets = list()
+        self.matches = list()
+        self.halves = list()
+        self.start_frame_indices = list()
 
-        game_counter = 0
+        # game_counter = 0
         for game in tqdm(self.listGames):
-            game_counter += 1
+            # game_counter += 1
             # Load features
             feat_half1 = np.load(os.path.join(self.path, game, "1_" + self.features))
             feat_half1 = feat_half1.reshape(-1, feat_half1.shape[-1])
@@ -139,11 +140,16 @@ class SoccerNetClips(Dataset):
             self.game_labels.append(label_half2)
             self.rel_offsets.append(rel_offset1)
             self.rel_offsets.append(rel_offset2)
-            if game_counter == n_download:
-                break
+            self.matches.append([game] * (feat_half1.shape[0] + feat_half2.shape[0]))
+            self.halves.append([1] * feat_half1.shape[0] +  [2] * feat_half2.shape[0])
+            self.start_frame_indices.append(np.concatenate((np.arange(0, feat_half1.shape[0]) * 40,  np.arange(0, feat_half2.shape[0]) * 40)))
+
         self.game_feats = np.concatenate(self.game_feats)
         self.game_labels = np.concatenate(self.game_labels)
         self.rel_offsets = np.concatenate(self.rel_offsets)
+        self.matches = np.concatenate(self.matches)
+        self.halves = np.concatenate(self.halves)
+        self.start_frame_indices = np.concatenate(self.start_frame_indices)
         halt=1
 
 
@@ -157,7 +163,7 @@ class SoccerNetClips(Dataset):
             clip_labels (np.array): clip of labels for the segmentation.
             clip_targets (np.array): clip of targets for the spotting.
         """
-        return self.game_feats[index,:,:], self.game_labels[index,:], self.rel_offsets[index]
+        return self.game_feats[index,:,:], self.game_labels[index,:], self.rel_offsets[index], self.matches[index], self.halves[index], self.start_frame_indices[index]
 
     def __len__(self):
         return len(self.game_feats)
