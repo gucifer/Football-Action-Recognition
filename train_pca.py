@@ -78,6 +78,8 @@ parser.add_argument("--testing_split", default='valid', type=str,
                     help='Which split to be used for testing')
 parser.add_argument("--training_split", default='train', type=str,
                     help='Which split to be used for training: specify "train+val" to train on both training and validation sets')
+parser.add_argument("--n_download", default='500', type=int,
+                    help='How many matches data to work on')
 
 
 def main():
@@ -126,7 +128,7 @@ def main_worker(gpu, args):
         split=["train"],
         version=2,
         framerate=FPS,
-        n_download=3,
+        n_download=args.n_download,
         window_size=20) # for 20 seconds video
 
     dataloader_train = DataLoader(dataset_train, batch_size=args.batch_size, shuffle=False, num_workers=args.workers)
@@ -138,7 +140,7 @@ def main_worker(gpu, args):
         split=["valid"],
         version=2,
         framerate=FPS,
-        n_download=3,
+        n_download=args.n_download,
         window_size=20) # for 20 seconds video
 
     dataloader_val = DataLoader(dataset_val, batch_size=args.batch_size, shuffle=False, num_workers=args.workers)

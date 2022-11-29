@@ -6,6 +6,7 @@ args = {
     "lr": "2e-3",
     "out_dir": "saved",
     "workers": "2",
+    "n_download": "3",
 }
 
 cmd = "python -u train_pca.py"
