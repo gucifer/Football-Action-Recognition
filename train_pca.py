@@ -156,23 +156,23 @@ def main_worker(gpu, args):
         #     model, optim = amp.initialize(model, optim, opt_level=args.opt_level)
     scheduler = torch.optim.lr_scheduler.LambdaLR(optim, cosine_lr(args.lr, it_max=args.epochs * len(dataloader_train), warmup_iterations=len(dataloader_train)))
 
-    # model = torch.nn.DataParallel(model)
+    model = torch.nn.DataParallel(model)
 
-    # if args.resume != '':
-    #     #ToDo: add amp.load_state_dict()
-    #     checkpoint = load_checkpoint(args.resume)
-    #     model.load_state_dict(checkpoint["state_dict"])
-    #     best_map = checkpoint["best_map"]
-    #     optim.load_state_dict(checkpoint["optimizer"])
-    #     if args.mixed_precision:
-    #         amp.load_state_dict(checkpoint['amp'])
-    #     if args.start_epoch == 0:
-    #         args.start_epoch = checkpoint["epoch"]
+    if args.resume != '':
+        #ToDo: add amp.load_state_dict()
+        checkpoint = load_checkpoint(args.resume)
+        model.load_state_dict(checkpoint["state_dict"])
+        best_map = checkpoint["best_map"]
+        optim.load_state_dict(checkpoint["optimizer"])
+        if args.mixed_precision:
+            amp.load_state_dict(checkpoint['amp'])
+        if args.start_epoch == 0:
+            args.start_epoch = checkpoint["epoch"]
 
-    # if args.evaluate:
-    #     print("=> Validation begins...")
-    #     a_mAP = validate(dataloader_val, model, criterion, args.start_epoch, args)
-    #     sys.exit()
+    if args.evaluate:
+        print("=> Validation begins...")
+        a_mAP = validate(dataloader_val, model, criterion, args.start_epoch, args)
+        sys.exit()
 
     best_epoch = 0
     for e in range(args.start_epoch, args.epochs):
