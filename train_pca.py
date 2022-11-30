@@ -16,6 +16,8 @@ import sys
 import json
 import os
 import errno
+from datetime import datetime
+import logging
 # from torch import nn
 
 np.random.seed(123)
@@ -177,14 +179,37 @@ def main_worker(gpu, args):
         sys.exit()
 
     best_epoch = 0
+    
+    formatter = logging.Formatter("%(message)s")
+    train_handler = logging.FileHandler("training_times.log")
+    valid_handler = logging.FileHandler("validation_times.log")
+    train_handler.setFormatter(formatter)
+    valid_handler.setFormatter(formatter)
+
+    logger_training = logging.getLogger("training")
+    logger_training.setLevel(logging.INFO)
+    logger_training.addHandler(train_handler)
+    logger_training.info("-"*35)
+
+    logger_validation = logging.getLogger("validation")
+    logger_validation.setLevel(logging.INFO)
+    logger_validation.addHandler(valid_handler)
+    logger_validation.info("-"*35)
+
     for e in range(args.start_epoch, args.epochs):
         # if e != 0:
         #     dataloader_train.dataset.update_background_samples()
         print("=> Training begins...")
+        trainingTime = datetime.now()
         train(dataloader_train, model, criterion, optim, scheduler, e, args, device)
+        trainingTime = (datetime.now() - trainingTime).total_seconds()/60
+        logger_training.info(": ".join([str(e), str(trainingTime)]))
 
         print("=> Validation begins...")
+        validationTime = datetime.now()
         map = validate(dataloader_val, model, criterion, e, args, device)
+        validationTime = (datetime.now() - validationTime).total_seconds()/60
+        logger_validation.info(": ".join([str(e), str(validationTime)]))
 
         is_best = map > best_map
         if is_best:
@@ -223,9 +248,10 @@ def train(dataloader_train, model, criterion, optim, scheduler, epoch, args, dev
 
     # it_counter = epoch * len(dataloader_train)
     # for it, (video, label, rel_offset, match, half, start_frame) in enumerate(dataloader_train):
-    for it, (features, label, rel_offset, match, half, start_frame) in enumerate(dataloader_train):
+    for it, (features, label, rel_offset, _, _, _) in enumerate(dataloader_train):
         # it_counter += 1
         features = features.to(device)
+        features.requires_grad = True
         label = label.to(device)
         rel_offset = rel_offset.to(device)
         # label = label.to(device)

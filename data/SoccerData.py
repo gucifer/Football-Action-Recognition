@@ -7,6 +7,7 @@ import time
 import socket
 
 from tqdm import tqdm
+import argparse
 
 import torch
 
@@ -129,12 +130,12 @@ class SoccerNetClips(Dataset):
                 
                 if half == 1:
                     label_half1[temporal_viewpoint][-1] = 0 # not BG anymore
-                    label_half1[temporal_viewpoint][label+1] = 1 # that's my class
+                    label_half1[temporal_viewpoint][label] = 1 # that's my class
                     rel_offset1[temporal_viewpoint] = rel_offset
 
                 if half == 2:
                     label_half2[temporal_viewpoint][-1] = 0 # not BG anymore
-                    label_half2[temporal_viewpoint][label+1] = 1 # that's my class
+                    label_half2[temporal_viewpoint][label] = 1 # that's my class
                     rel_offset2[temporal_viewpoint] = rel_offset
             
             self.game_feats.append(feat_half1)
@@ -170,123 +171,3 @@ class SoccerNetClips(Dataset):
 
     def __len__(self):
         return len(self.game_feats)
-
-
-# class SoccerNetClipsTesting(Dataset):
-#     def __init__(self, path, features="ResNET_PCA512.npy", split=["test"], version=1, 
-#                 framerate=2, window_size=15):
-#         self.path = path
-#         self.listGames = getListGames(split)
-#         self.features = features
-#         self.window_size_frame = window_size*framerate
-#         self.framerate = framerate
-#         self.version = version
-#         self.split=split
-#         if version == 1:
-#             self.dict_event = EVENT_DICTIONARY_V1
-#             self.num_classes = 3
-#             self.labels="Labels.json"
-#         elif version == 2:
-#             self.dict_event = EVENT_DICTIONARY_V2
-#             self.num_classes = 17
-#             self.labels="Labels-v2.json"
-
-#         logging.info("Checking/Download features and labels locally")
-#         downloader = SoccerNetDownloader(path)
-#         for s in split:
-#             if s == "challenge":
-#                 downloader.downloadGames(files=[f"1_{self.features}", f"2_{self.features}"], split=[s], verbose=False,randomized=True)
-#             else:
-#                 downloader.downloadGames(files=[self.labels, f"1_{self.features}", f"2_{self.features}"], split=[s], verbose=False,randomized=True)
-
-
-#     def __getitem__(self, index):
-#         """
-#         Args:
-#             index (int): Index
-#         Returns:
-#             feat_half1 (np.array): features for the 1st half.
-#             feat_half2 (np.array): features for the 2nd half.
-#             label_half1 (np.array): labels (one-hot) for the 1st half.
-#             label_half2 (np.array): labels (one-hot) for the 2nd half.
-#         """
-#         # Load features
-#         feat_half1 = np.load(os.path.join(self.path, self.listGames[index], "1_" + self.features))
-#         feat_half1 = feat_half1.reshape(-1, feat_half1.shape[-1])
-#         feat_half2 = np.load(os.path.join(self.path, self.listGames[index], "2_" + self.features))
-#         feat_half2 = feat_half2.reshape(-1, feat_half2.shape[-1])
-
-#         # Load labels
-#         label_half1 = np.zeros((feat_half1.shape[0], self.num_classes))
-#         label_half2 = np.zeros((feat_half2.shape[0], self.num_classes))
-
-#         # check if annoation exists
-#         if os.path.exists(os.path.join(self.path, self.listGames[index], self.labels)):
-#             labels = json.load(open(os.path.join(self.path, self.listGames[index], self.labels)))
-
-#             for annotation in labels["annotations"]:
-
-#                 time = annotation["gameTime"]
-#                 event = annotation["label"]
-
-#                 half = int(time[0])
-
-#                 minutes = int(time[-5:-3])
-#                 seconds = int(time[-2::])
-#                 frame = self.framerate * ( seconds + 60 * minutes ) 
-
-#                 if self.version == 1:
-#                     if "card" in event: label = 0
-#                     elif "subs" in event: label = 1
-#                     elif "soccer" in event: label = 2
-#                     else: continue
-#                 elif self.version == 2:
-#                     if event not in self.dict_event:
-#                         continue
-#                     label = self.dict_event[event]
-
-#                 value = 1
-#                 if "visibility" in annotation.keys():
-#                     if annotation["visibility"] == "not shown":
-#                         value = -1
-
-#                 if half == 1:
-#                     frame = min(frame, feat_half1.shape[0]-1)
-#                     label_half1[frame][label] = value
-
-#                 if half == 2:
-#                     frame = min(frame, feat_half2.shape[0]-1)
-#                     label_half2[frame][label] = value
-
-        
-            
-
-#         feat_half1 = feats2clip(torch.from_numpy(feat_half1), 
-#                         stride=1, off=int(self.window_size_frame/2), 
-#                         clip_length=self.window_size_frame)
-
-#         feat_half2 = feats2clip(torch.from_numpy(feat_half2), 
-#                         stride=1, off=int(self.window_size_frame/2), 
-#                         clip_length=self.window_size_frame)
-
-        
-#         return self.listGames[index], feat_half1, feat_half2, label_half1, label_half2
-
-#     def __len__(self):
-#         return len(self.listGames)
-
-
-if __name__ == "__main__":
-    dataset_Train = SoccerNetClips(
-        # path="/content/drive/.shortcut-targets-by-id/1H509_zeV7bta5BudwCznjP0EWrCa_LCJ/Deep Learning - Final Project/assets", 
-        path = "data/assets",
-        features="ResNET_TF2_PCA512.npy",
-        version=2,
-        n_download=2,
-        window_size=20) # for 20 seconds video
-
-    dataset_Train.dict_event
-
-    print(dataset_Train.game_feats.shape)
-    print(dataset_Train.game_labels.shape)
-    print(dataset_Train.game_labels)
