@@ -54,7 +54,7 @@ class FrameData(Dataset):
 if __name__ == "__main__":
 
     if torch.backends.mps.is_available():
-        device = torch.device("mps")
+        device = torch.device("cpu")
     elif torch.cuda.is_available():
         device = torch.device("cuda")
     else:
@@ -63,7 +63,7 @@ if __name__ == "__main__":
 
     all_game_frames_path = "/Users/srv/Documents/Git/GaTech/dl_cse_7643/final_project/code/data/frames"
     feature_path = "/Users/srv/Documents/Git/GaTech/dl_cse_7643/final_project/code/data/vit_features"
-    batch_size = 500
+    batch_size = 50
     workers = 1
 
     model_weights = models.ViT_B_16_Weights.IMAGENET1K_SWAG_LINEAR_V1
@@ -72,11 +72,16 @@ if __name__ == "__main__":
     return_nodes = {"encoder.layers.encoder_layer_11": "encode11"}
     feat_model = create_feature_extractor(model, return_nodes)
     game_list = os.listdir(all_game_frames_path)
+    game_list.reverse()
     batch_per_worker = batch_size//workers
     num_batch_iter = ceil(batch_size/batch_per_worker)
 
     for game in tqdm(game_list):
-        if game == ".DS_Store": continue
+
+        extracted_vit_features = os.listdir(feature_path)
+        extracted_vit_features = [vit_feat[:-4] for vit_feat in extracted_vit_features]
+        if game == ".DS_Store" or game in extracted_vit_features:
+            continue
 
         dataset = FrameData(game)
         loader = DataLoader(dataset, batch_size=batch_size, num_workers=workers)
