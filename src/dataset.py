@@ -44,12 +44,13 @@ def feats2clip(feats, stride, clip_length, padding = "replicate_last", off=0):
 
 class SoccerNetClips(Dataset):
     def __init__(self, path, features="ResNET_PCA512.npy", split=["train"], version=1, 
-                framerate=2, window_size=15):
+                framerate=2, window_size=15, custom_feature_path="C:\\Users\\91995\\OneDrive - Georgia Institute of Technology\\vit_features"):
         self.path = path
         self.listGames = getListGames(split)
         self.features = features
         self.window_size_frame = window_size*framerate
         self.version = version
+        self.custom_feature_path=custom_feature_path
         if version == 1:
             self.num_classes = 3
             self.labels="Labels.json"
@@ -60,7 +61,8 @@ class SoccerNetClips(Dataset):
 
         logging.info("Checking/Download features and labels locally")
         downloader = SoccerNetDownloader(path)
-        downloader.downloadGames(files=[self.labels, f"1_{self.features}", f"2_{self.features}"], split=split, verbose=False,randomized=True)
+        if self.features != "custom_vit":
+            downloader.downloadGames(files=[self.labels, f"1_{self.features}", f"2_{self.features}"], split=split, verbose=False,randomized=True)
 
 
         logging.info("Pre-compute clips")
@@ -71,10 +73,17 @@ class SoccerNetClips(Dataset):
         # game_counter = 0
         for game in tqdm(self.listGames):
             # Load features
-            feat_half1 = np.load(os.path.join(self.path, game, "1_" + self.features))
-            feat_half1 = feat_half1.reshape(-1, feat_half1.shape[-1])
-            feat_half2 = np.load(os.path.join(self.path, game, "2_" + self.features))
-            feat_half2 = feat_half2.reshape(-1, feat_half2.shape[-1])
+            if self.features == "custom_vit":
+                game_feature_path = game.replace('\\', '_')
+                feat_half1 = np.load(os.path.join(self.custom_feature_path, f"{game_feature_path}_1.npy"))
+                feat_half1 = feat_half1.reshape(-1, feat_half1.shape[-1])
+                feat_half2 = np.load(os.path.join(self.custom_feature_path, f"{game_feature_path}_2.npy"))
+                feat_half2 = feat_half2.reshape(-1, feat_half2.shape[-1])
+            else:
+                feat_half1 = np.load(os.path.join(self.path, game, "1_" + self.features))
+                feat_half1 = feat_half1.reshape(-1, feat_half1.shape[-1])
+                feat_half2 = np.load(os.path.join(self.path, game, "2_" + self.features))
+                feat_half2 = feat_half2.reshape(-1, feat_half2.shape[-1])
 
             feat_half1 = feats2clip(torch.from_numpy(feat_half1), stride=self.window_size_frame, clip_length=self.window_size_frame)
             feat_half2 = feats2clip(torch.from_numpy(feat_half2), stride=self.window_size_frame, clip_length=self.window_size_frame)
@@ -82,9 +91,9 @@ class SoccerNetClips(Dataset):
             # Load labels
             labels = json.load(open(os.path.join(self.path, game, self.labels)))
 
-            label_half1 = np.zeros((feat_half1.shape[0], self.num_classes+1), dtype=np.float32)
+            label_half1 = np.zeros((feat_half1.shape[0], self.num_classes+1))
             label_half1[:,0]=1 # those are BG classes
-            label_half2 = np.zeros((feat_half2.shape[0], self.num_classes+1), dtype=np.float32)
+            label_half2 = np.zeros((feat_half2.shape[0], self.num_classes+1))
             label_half2[:,0]=1 # those are BG classes
 
 
@@ -150,7 +159,7 @@ class SoccerNetClips(Dataset):
 
 class SoccerNetClipsTesting(Dataset):
     def __init__(self, path, features="ResNET_PCA512.npy", split=["test"], version=1, 
-                framerate=2, window_size=15):
+                framerate=2, window_size=15, custom_feature_path="C:\\Users\\91995\\OneDrive - Georgia Institute of Technology\\vit_features"):
         self.path = path
         self.listGames = getListGames(split)
         self.features = features
@@ -158,6 +167,7 @@ class SoccerNetClipsTesting(Dataset):
         self.framerate = framerate
         self.version = version
         self.split=split
+        self.custom_feature_path=custom_feature_path
         if version == 1:
             self.dict_event = EVENT_DICTIONARY_V1
             self.num_classes = 3
@@ -169,11 +179,12 @@ class SoccerNetClipsTesting(Dataset):
 
         logging.info("Checking/Download features and labels locally")
         downloader = SoccerNetDownloader(path)
-        for s in split:
-            if s == "challenge":
-                downloader.downloadGames(files=[f"1_{self.features}", f"2_{self.features}"], split=[s], verbose=False,randomized=True)
-            else:
-                downloader.downloadGames(files=[self.labels, f"1_{self.features}", f"2_{self.features}"], split=[s], verbose=False,randomized=True)
+        if self.features != "custom_vit":
+            for s in split:
+                if s == "challenge":
+                    downloader.downloadGames(files=[f"1_{self.features}", f"2_{self.features}"], split=[s], verbose=False,randomized=True)
+                else:
+                    downloader.downloadGames(files=[self.labels, f"1_{self.features}", f"2_{self.features}"], split=[s], verbose=False,randomized=True)
 
 
     def __getitem__(self, index):
@@ -187,10 +198,18 @@ class SoccerNetClipsTesting(Dataset):
             label_half2 (np.array): labels (one-hot) for the 2nd half.
         """
         # Load features
-        feat_half1 = np.load(os.path.join(self.path, self.listGames[index], "1_" + self.features))
-        feat_half1 = feat_half1.reshape(-1, feat_half1.shape[-1])
-        feat_half2 = np.load(os.path.join(self.path, self.listGames[index], "2_" + self.features))
-        feat_half2 = feat_half2.reshape(-1, feat_half2.shape[-1])
+        if self.features == "custom_vit":
+            game_feature_path = self.listGames[index].replace('\\', '_')
+            feat_half1 = np.load(os.path.join(self.custom_feature_path, f"{game_feature_path}_1.npy"))
+            feat_half1 = feat_half1.reshape(-1, feat_half1.shape[-1])
+            feat_half2 = np.load(os.path.join(self.custom_feature_path, f"{game_feature_path}_2.npy"))
+            feat_half2 = feat_half2.reshape(-1, feat_half2.shape[-1])
+        else:
+            feat_half1 = np.load(os.path.join(self.path, self.listGames[index], "1_" + self.features))
+            feat_half1 = feat_half1.reshape(-1, feat_half1.shape[-1])
+            feat_half2 = np.load(os.path.join(self.path, self.listGames[index], "2_" + self.features))
+            feat_half2 = feat_half2.reshape(-1, feat_half2.shape[-1])
+
 
         # Load labels
         label_half1 = np.zeros((feat_half1.shape[0], self.num_classes))

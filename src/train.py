@@ -25,7 +25,7 @@ def trainer(train_loader,
             optimizer,
             scheduler,
             criterion,
-            model_name, device,
+            model_name,
             max_epochs=1000,
             evaluation_frequency=20):
 
@@ -38,11 +38,11 @@ def trainer(train_loader,
 
         # train for one epoch
         loss_training = train(train_loader, model, criterion,
-                              optimizer, epoch + 1, train=True, device=device)
+                              optimizer, epoch + 1, train=True)
 
         # evaluate on validation set
         loss_validation = train(
-            val_loader, model, criterion, optimizer, epoch + 1, train=False, device=device)
+            val_loader, model, criterion, optimizer, epoch + 1, train=False)
 
         state = {
             'epoch': epoch + 1,
@@ -65,7 +65,7 @@ def trainer(train_loader,
             performance_validation = test(
                 val_metric_loader,
                 model,
-                model_name, device=device)
+                model_name)
 
             logging.info("Validation performance at epoch " +
                          str(epoch+1) + " -> " + str(performance_validation))
@@ -90,7 +90,7 @@ def train(dataloader,
           model,
           criterion,
           optimizer,
-          epoch, device,
+          epoch,
           train=False):
 
     batch_time = AverageMeter()
@@ -108,8 +108,8 @@ def train(dataloader,
         for i, (feats, labels) in t:
             # measure data loading time
             data_time.update(time.time() - end)
-            feats = feats.to(device)
-            labels = labels.to(device)
+            feats = feats.cuda()
+            labels = labels.cuda()
             # compute output
             output = model(feats)
 
@@ -143,7 +143,7 @@ def train(dataloader,
     return losses.avg
 
 
-def test(dataloader, model, model_name, device):
+def test(dataloader, model, model_name):
     batch_time = AverageMeter()
     data_time = AverageMeter()
 
@@ -156,8 +156,8 @@ def test(dataloader, model, model_name, device):
         for i, (feats, labels) in t:
             # measure data loading time
             data_time.update(time.time() - end)
-            feats = feats.to(device)
-            # labels = labels.to(device)
+            feats = feats.cuda()
+            # labels = labels.cuda()
 
             # print(feats.shape)
             # feats=feats.unsqueeze(0)
@@ -191,7 +191,7 @@ def test(dataloader, model, model_name, device):
 
     return mAP
 
-def testSpotting(dataloader, model, model_name, device, overwrite=True, NMS_window=30, NMS_threshold=0.5):
+def testSpotting(dataloader, model, model_name, overwrite=True, NMS_window=30, NMS_threshold=0.5):
     
     split = '_'.join(dataloader.dataset.split)
     # print(split)
@@ -232,7 +232,7 @@ def testSpotting(dataloader, model, model_name, device, overwrite=True, NMS_wind
                     start_frame = BS*b
                     end_frame = BS*(b+1) if BS * \
                         (b+1) < len(feat_half1) else len(feat_half1)
-                    feat = feat_half1[start_frame:end_frame].to(device)
+                    feat = feat_half1[start_frame:end_frame].cuda()
                     output = model(feat).cpu().detach().numpy()
                     timestamp_long_half_1.append(output)
                 timestamp_long_half_1 = np.concatenate(timestamp_long_half_1)
@@ -242,7 +242,7 @@ def testSpotting(dataloader, model, model_name, device, overwrite=True, NMS_wind
                     start_frame = BS*b
                     end_frame = BS*(b+1) if BS * \
                         (b+1) < len(feat_half2) else len(feat_half2)
-                    feat = feat_half2[start_frame:end_frame].to(device)
+                    feat = feat_half2[start_frame:end_frame].cuda()
                     output = model(feat).cpu().detach().numpy()
                     timestamp_long_half_2.append(output)
                 timestamp_long_half_2 = np.concatenate(timestamp_long_half_2)

@@ -21,6 +21,7 @@ __pycache__/
 anno_data/
 frames/
 videos/
+models/
 listgame/
 !*.code-workspace
 trainer.py
