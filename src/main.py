@@ -79,11 +79,13 @@ def main(args):
     if not args.test_only:
         from collections import Counter
         if "CB" in args.loss_function:
+            print("beta = 0.9")
             beta = 0.9
         else:
             beta = 0
         
         if "FL" in args.loss_function:
+            print("gamma = 1")
             gamma = 1
         else:
             gamma = 0
@@ -119,8 +121,8 @@ def main(args):
         dataset_Test  = SoccerNetClipsTesting(path=args.SoccerNet_path, features=args.features, split=[split], version=args.version, framerate=args.framerate, window_size=args.window_size, custom_feature_path=args.custom_feature_path)
 
         test_loader = torch.utils.data.DataLoader(dataset_Test,
-            batch_size=1, shuffle=False,
-            num_workers=1, pin_memory=True)
+            batch_size=1, shuffle=False,)
+            # num_workers=1, pin_memory=True)
 
         results = testSpotting(test_loader, model=model, model_name=args.model_name, NMS_window=args.NMS_window, NMS_threshold=args.NMS_threshold)
         if results is None:

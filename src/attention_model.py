@@ -10,7 +10,7 @@ class AttentionModel(nn.Module):
             nn.Linear(feature_size*num_frames, 1024),
             nn.ReLU(inplace=True),
             nn.Linear(1024, 512),
-            # nn.Dropout(dropout),
+            nn.Dropout(dropout),
             nn.ReLU(inplace=True),
             nn.Linear(512, num_classes+1)
         )
