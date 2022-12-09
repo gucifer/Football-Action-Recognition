@@ -91,9 +91,9 @@ class SoccerNetClips(Dataset):
             # Load labels
             labels = json.load(open(os.path.join(self.path, game, self.labels)))
 
-            label_half1 = np.zeros((feat_half1.shape[0], self.num_classes+1))
+            label_half1 = np.zeros((feat_half1.shape[0], self.num_classes+1), dtype=np.float32)
             label_half1[:,0]=1 # those are BG classes
-            label_half2 = np.zeros((feat_half2.shape[0], self.num_classes+1))
+            label_half2 = np.zeros((feat_half2.shape[0], self.num_classes+1), dtype=np.float32)
             label_half2[:,0]=1 # those are BG classes
 
 

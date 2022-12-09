@@ -24,7 +24,7 @@ def reweight(cls_num_dict, beta=0.9999):
     per_cls_weights = None
 
     per_cls_weights = [(1 - beta)/(1 - np.power(beta, cls_num_dict[i])) for i in range(18)]
-    per_cls_weights = torch.tensor(per_cls_weights)
+    per_cls_weights = torch.tensor(per_cls_weights, dtype=torch.float32)
     per_cls_weights = per_cls_weights/torch.sum(per_cls_weights) * 18
 
     return per_cls_weights

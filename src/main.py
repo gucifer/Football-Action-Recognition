@@ -123,7 +123,7 @@ def main(args):
         del train_loader, val_loader, val_metric_loader
 
     # For the best model only
-    checkpoint = torch.load(os.path.join("models", args.model_name, "model.pth.tar"))
+    checkpoint = torch.load(os.path.join(model_save_path, args.model_name, "model.pth.tar"))
     model.load_state_dict(checkpoint['state_dict'])
 
     # test on multiple splits [test/challenge]
@@ -206,9 +206,9 @@ if __name__ == '__main__':
     numeric_level = getattr(logging, args.loglevel.upper(), None)
     if not isinstance(numeric_level, int):
         raise ValueError('Invalid log level: %s' % args.loglevel)
-
-    os.makedirs(os.path.join("models", args.model_name), exist_ok=True)
-    log_path = os.path.join("models", args.model_name,
+    model_save_path = args.custom_feature_path.replace("vit_features", "project_artefacts")
+    os.makedirs(os.path.join(model_save_path, args.model_name), exist_ok=True)
+    log_path = os.path.join(model_save_path, args.model_name,
                             datetime.now().strftime('%Y-%m-%d_%H-%M-%S.log'))
     logging.basicConfig(
         level=numeric_level,
