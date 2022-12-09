@@ -1,4 +1,0 @@
-abrupt
-logo
-smooth
-other
