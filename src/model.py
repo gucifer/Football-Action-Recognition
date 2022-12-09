@@ -80,7 +80,7 @@ class Model(nn.Module):
             self.fc = nn.Linear(input_size*self.vlad_k, self.num_classes+1)
 
         self.drop1 = nn.Dropout(p=0.2)
-        self.drop2 = nn.Dropout(p=0.2)
+        self.drop2 = nn.Dropout(p=0.4)
         self.sigm = nn.Sigmoid()
 
         self.load_weights(weights=weights)
@@ -101,7 +101,7 @@ class Model(nn.Module):
         if not IC == 512:
             inputs = inputs.reshape(BS*FR, IC)
             inputs = self.feature_extractor(inputs)
-            inputs = self.drop1(inputs.reshape(BS, FR, -1))
+            inputs = inputs.reshape(BS, FR, -1)
 
         # Temporal pooling operation
         if self.pool == "MAX" or self.pool == "AVG":
