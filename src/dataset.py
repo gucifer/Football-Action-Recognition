@@ -63,7 +63,7 @@ class SoccerNetClips(Dataset):
         downloader = SoccerNetDownloader(path)
         if self.features != "custom_vit":
             downloader.downloadGames(files=[self.labels, f"1_{self.features}", f"2_{self.features}"], split=split, verbose=False,randomized=True)
-
+        # vit features link # https://gtvault.sharepoint.com/:f:/s/Alphas/Eo8u3Gc5jslBhBV13wYlTL0BrhwqMPWxgC2CBGM2zqO2cg?e=ldhIO5
 
         logging.info("Pre-compute clips")
 

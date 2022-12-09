@@ -17,6 +17,14 @@ from loss import NLLLoss, reweight, FocalLoss
 
 def main(args):
 
+
+    if torch.backends.mps.is_available():
+        device = torch.device("mps")
+    elif torch.cuda.is_available():
+        device = torch.device("cuda")
+    else:
+        device = torch.device("cpu")
+
     logging.info("Parameters:")
     for arg in vars(args):
         logging.info(arg.rjust(15) + " : " + str(getattr(args, arg)))
@@ -41,18 +49,18 @@ def main(args):
                         num_frames=args.window_size*args.framerate, 
                         num_heads=8,
                         num_classes = dataset_Test.num_classes,
-                        dropout=0.45).cuda()
+                        dropout=0.45).to(device)
 
     elif ml_model_name == "RMSNet":
         model = RMSNetModel(feature_size=args.feature_dim,
                         num_frames=args.window_size*args.framerate, 
                         num_classes = dataset_Test.num_classes,
-                        dropout=0.45).cuda()
+                        dropout=0.45).to(device)
     else:
         model = Model(weights=args.load_weights, input_size=args.feature_dim,
                     num_classes=dataset_Test.num_classes, window_size=args.window_size, 
                     vocab_size = args.vocab_size,
-                    framerate=args.framerate, pool=args.pool).cuda()
+                    framerate=args.framerate, pool=args.pool).to(device)
 
     logging.info(model)
     total_params = sum(p.numel()
@@ -89,7 +97,7 @@ def main(args):
             gamma = 1
         else:
             gamma = 0
-        per_cls_weights = reweight(dict(Counter(train_loader.dataset.game_labels.argmax(axis=1))), beta=beta).cuda()
+        per_cls_weights = reweight(dict(Counter(train_loader.dataset.game_labels.argmax(axis=1))), beta=beta).to(device)
         # print(per_cls_weights)
         # criterion = NLLLoss()
         # criterion = torch.nn.CrossEntropyLoss()
@@ -105,7 +113,7 @@ def main(args):
         trainer(train_loader, val_loader, val_metric_loader, 
                 model, optimizer, scheduler, criterion,
                 model_name=args.model_name,
-                max_epochs=args.max_epochs, evaluation_frequency=args.evaluation_frequency)
+                max_epochs=args.max_epochs, evaluation_frequency=args.evaluation_frequency, device = device)
 
     # Free up some RAM memory
     if not args.test_only:
@@ -124,7 +132,7 @@ def main(args):
             batch_size=1, shuffle=False,)
             # num_workers=1, pin_memory=True)
 
-        results = testSpotting(test_loader, model=model, model_name=args.model_name, NMS_window=args.NMS_window, NMS_threshold=args.NMS_threshold)
+        results = testSpotting(test_loader, model=model, model_name=args.model_name, NMS_window=args.NMS_window, NMS_threshold=args.NMS_threshold, device=device)
         if results is None:
             continue
 
