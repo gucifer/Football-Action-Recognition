@@ -6,7 +6,7 @@ class AttentionModel(nn.Module):
     def __init__(self, feature_size, num_frames, num_heads, num_classes, dropout):
         super(AttentionModel,self).__init__()
         self.feature_size = feature_size
-        self.attention_1 = nn.MultiheadAttention(self.feature_size,num_heads,dropout=dropout)
+        self.attention_1 = nn.MultiheadAttention(self.feature_size,num_heads,dropout=dropout, batch_first=True)
         self.linear_net = nn.Sequential(
             nn.Linear(feature_size, 1024),
             nn.ReLU(inplace=True),
@@ -35,8 +35,8 @@ class AttentionModel(nn.Module):
         out, attn = self.attention_1(out,out,out)
         # out = self.linear_net(out)
         # res_out = x + out
-        out = x + out
-        # out = self.norm_1(res_out)
+        # out = x * out
+        # out = self.norm_1(out)
 
         # For normal attention model
         # out = self.global_pooling(out)
