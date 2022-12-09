@@ -27,14 +27,14 @@ def trainer(train_loader,
             criterion,
             model_name,
             max_epochs=1000,
-            evaluation_frequency=20, device=torch.device("cpu")):
+            evaluation_frequency=20, device=torch.device("cpu"), model_save_path = "models"):
 
     logging.info("start training")
 
     best_loss = 9e99
 
     for epoch in range(max_epochs):
-        best_model_path = os.path.join("models", model_name, "model.pth.tar")
+        best_model_path = os.path.join(model_save_path, model_name, "model.pth.tar")
 
         # train for one epoch
         loss_training = train(train_loader, model, criterion,

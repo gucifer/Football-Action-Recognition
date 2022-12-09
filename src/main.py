@@ -110,10 +110,12 @@ def main(args):
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', verbose=True, patience=args.patience)
 
         # start training
+        model_save_path = args.custom_feature_path.replace("vit_features", "project_artefacts")
         trainer(train_loader, val_loader, val_metric_loader, 
                 model, optimizer, scheduler, criterion,
                 model_name=args.model_name,
-                max_epochs=args.max_epochs, evaluation_frequency=args.evaluation_frequency, device = device)
+                max_epochs=args.max_epochs, evaluation_frequency=args.evaluation_frequency, device = device,
+                model_save_path = model_save_path)
 
     # Free up some RAM memory
     if not args.test_only:
