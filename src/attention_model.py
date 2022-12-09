@@ -22,7 +22,9 @@ class AttentionModel(nn.Module):
         
         # NEtvlad model
         self.vlad_k = 64 # Size of the vocabulary for NetVLAD
-        self.drop_2 = nn.Dropout(0.2)
+        self.drop_1 = nn.Dropout(0.2)
+        self.drop_2 = nn.Dropout(0.3)
+        self.drop_3 = nn.Dropout(0.4)
         self.pool_layer_before = NetVLAD(cluster_size=int(self.vlad_k/2), feature_size=feature_size,
                                             add_batch_norm=True)
         self.pool_layer_after = NetVLAD(cluster_size=int(self.vlad_k/2), feature_size=feature_size,
@@ -32,7 +34,9 @@ class AttentionModel(nn.Module):
 
     def forward(self,x):
         out = self.embed(x)
+        out = self.drop_1(out)
         out, attn = self.attention_1(out,out,out)
+        out = self.drop_2(out)
         # out = self.linear_net(out)
         # res_out = x + out
         # out = x * out
@@ -53,7 +57,7 @@ class AttentionModel(nn.Module):
         inputs_before_pooled = self.pool_layer_before(out[:, :nb_frames_50, :])
         inputs_after_pooled = self.pool_layer_after(out[:, nb_frames_50:, :])
         out = torch.cat((inputs_before_pooled, inputs_after_pooled), dim=1)
-        out = self.sigm(self.fc(self.drop_2(out)))
+        out = self.sigm(self.fc(self.drop_3(out)))
 
         return out
 
