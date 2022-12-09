@@ -23,5 +23,4 @@ frames/
 videos/
 models/
 listgame/
-!*.code-workspace
 trainer.py
