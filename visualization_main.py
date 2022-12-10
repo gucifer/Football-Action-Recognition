@@ -32,12 +32,6 @@ if __name__ == "__main__":
     parser.add_argument("--num_games", default=1, help="number of games to read", type=int)
 
     args = parser.parse_args()
-    
-    args.SoccerNet_path = "/Users/srv/Documents/Cloud/Google Drive - Default/deep_learning_alphas_final_project/assets_pca"
-    args.frames_path = "/Users/srv/Documents/Git/GaTech/dl_cse_7643/final_project/code/data/frames"
-    args.artefacts_path = "/Users/srv/Documents/Cloud/Georgia Institute of Technology/Alphas - Documents/Project Data/project_artefacts"
-    
-
     visualizers = [
         # ct_attr.GradientShap,
         # ct_attr.DeepLift,
