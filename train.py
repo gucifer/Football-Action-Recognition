@@ -34,7 +34,7 @@ def trainer(train_loader,
     best_loss = 9e99
 
     for epoch in range(max_epochs):
-        best_model_path = os.path.join(model_save_path, model_name, "model.pth.tar")
+        best_model_path = os.path.join(model_save_path, "model.pth.tar")
 
         # train for one epoch
         loss_training = train(train_loader, model, criterion,
@@ -50,7 +50,7 @@ def trainer(train_loader,
             'best_loss': best_loss,
             'optimizer': optimizer.state_dict(),
         }
-        os.makedirs(os.path.join(model_save_path, model_name), exist_ok=True)
+        
 
         # remember best prec@1 and save checkpoint
         is_better = loss_validation < best_loss
@@ -191,11 +191,11 @@ def test(dataloader, model, model_name, device=torch.device("cpu")):
 
     return mAP
 
-def testSpotting(dataloader, model, model_name, overwrite=True, NMS_window=30, NMS_threshold=0.5, device=torch.device("cpu")):
+def testSpotting(dataloader, model, model_name, overwrite=True, NMS_window=30, NMS_threshold=0.5, device=torch.device("cpu"), model_save_path = "models"):
     
     split = '_'.join(dataloader.dataset.split)
     # print(split)
-    output_results = os.path.join("models", model_name, f"results_spotting_{split}.zip")
+    output_results = os.path.join(model_save_path, model_name, f"results_spotting_{split}.zip")
     output_folder = f"outputs_{split}"
 
 

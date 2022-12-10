@@ -1,11 +1,10 @@
 from torch.utils.data import Dataset
-
+from copy import deepcopy
 import numpy as np
-import random
+
 import os
-import time
 
-
+import cv2
 from tqdm import tqdm
 
 import torch
@@ -43,7 +42,7 @@ def feats2clip(feats, stride, clip_length, padding = "replicate_last", off=0):
 
 
 class SoccerNetClips(Dataset):
-    def __init__(self, path, features="ResNET_PCA512.npy", split=["train"], version=1, 
+    def __init__(self, path, features="ResNET_PCA512.npy", split=["train"], version=2, 
                 framerate=2, window_size=15, custom_feature_path="C:\\Users\\91995\\OneDrive - Georgia Institute of Technology\\vit_features"):
         self.path = path
         self.listGames = getListGames(split)
@@ -62,28 +61,59 @@ class SoccerNetClips(Dataset):
         logging.info("Checking/Download features and labels locally")
         downloader = SoccerNetDownloader(path)
         if self.features != "custom_vit":
-            downloader.downloadGames(files=[self.labels, f"1_{self.features}", f"2_{self.features}"], split=split, verbose=False,randomized=True)
+            downloader.downloadGames(files=[self.labels, f"1_{self.features}", f"2_{self.features}"], split=split, verbose=False, randomized=True)
         # vit features link # https://gtvault.sharepoint.com/:f:/s/Alphas/Eo8u3Gc5jslBhBV13wYlTL0BrhwqMPWxgC2CBGM2zqO2cg?e=ldhIO5
 
         logging.info("Pre-compute clips")
 
         self.game_feats = list()
         self.game_labels = list()
+        self.game_frames = list()
 
         # game_counter = 0
-        for game in tqdm(self.listGames):
+        for it, game in enumerate(tqdm(self.listGames)):
             # Load features
+            if it==1 and self.features == "frames": break
             if self.features == "custom_vit":
-                game_feature_path = game.replace('\\', '_')
+                game_feature_path = game.replace(os.path.sep, '_')
                 feat_half1 = np.load(os.path.join(self.custom_feature_path, f"{game_feature_path}_1.npy"))
                 feat_half1 = feat_half1.reshape(-1, feat_half1.shape[-1])
                 feat_half2 = np.load(os.path.join(self.custom_feature_path, f"{game_feature_path}_2.npy"))
                 feat_half2 = feat_half2.reshape(-1, feat_half2.shape[-1])
+
+            elif self.features == "frames":
+                game_feature_path = game.replace(os.path.sep, '_')
+                feat_half1_path = os.path.join(self.custom_feature_path, game_feature_path + "_1")
+                feat_half2_path = os.path.join(self.custom_feature_path, game_feature_path + "_2")
+                frames_1 = os.listdir(feat_half1_path)
+                frames_1 = [frame for frame in frames_1 if frame[-4:] == ".jpg"]
+                frames_1 = sorted(frames_1, key = lambda x: int(x[:-4]))
+                feat_half1 = []
+                for frame in frames_1:
+                    frame_path = os.path.join(feat_half1_path, frame)
+                    frame_attr = cv2.imread(frame_path)
+                    feat_half1.append(frame_attr)
+                feat_half1 = torch.tensor(np.asarray(feat_half1)).permute(0, 3, 1, 2).detach().numpy()
+
+                frames_2 = os.listdir(feat_half2_path)
+                frames_2 = [frame for frame in frames_2 if frame[-4:] == ".jpg"]
+                frames_2 = sorted(frames_2, key = lambda x: int(x[:-4]))
+                feat_half2 = []
+                for frame in frames_2:
+                    frame_path = os.path.join(feat_half2_path, frame)
+                    frame_attr = cv2.imread(frame_path)
+                    feat_half2.append(frame_attr)
+                feat_half2 = torch.tensor(np.asarray(feat_half2)).permute(0, 3, 1, 2).detach().numpy()
+                frames_feat_1 = deepcopy(feat_half1)
+                frames_feat_2 = deepcopy(feat_half2)
+                
             else:
                 feat_half1 = np.load(os.path.join(self.path, game, "1_" + self.features))
                 feat_half1 = feat_half1.reshape(-1, feat_half1.shape[-1])
                 feat_half2 = np.load(os.path.join(self.path, game, "2_" + self.features))
                 feat_half2 = feat_half2.reshape(-1, feat_half2.shape[-1])
+
+            
 
             feat_half1 = feats2clip(torch.from_numpy(feat_half1), stride=self.window_size_frame, clip_length=self.window_size_frame)
             feat_half2 = feats2clip(torch.from_numpy(feat_half2), stride=self.window_size_frame, clip_length=self.window_size_frame)
@@ -91,6 +121,8 @@ class SoccerNetClips(Dataset):
             # Load labels
             labels = json.load(open(os.path.join(self.path, game, self.labels)))
 
+            
+            
             label_half1 = np.zeros((feat_half1.shape[0], self.num_classes+1), dtype=np.float32)
             label_half1[:,0]=1 # those are BG classes
             label_half2 = np.zeros((feat_half2.shape[0], self.num_classes+1), dtype=np.float32)
@@ -123,7 +155,8 @@ class SoccerNetClips(Dataset):
                     continue
                 if half == 2 and frame//self.window_size_frame>=label_half2.shape[0]:
                     continue
-
+                
+                
                 if half == 1:
                     label_half1[frame//self.window_size_frame][0] = 0 # not BG anymore
                     label_half1[frame//self.window_size_frame][label+1] = 1 # that's my class
@@ -131,14 +164,20 @@ class SoccerNetClips(Dataset):
                 if half == 2:
                     label_half2[frame//self.window_size_frame][0] = 0 # not BG anymore
                     label_half2[frame//self.window_size_frame][label+1] = 1 # that's my class
-            
+        
             self.game_feats.append(feat_half1)
             self.game_feats.append(feat_half2)
             self.game_labels.append(label_half1)
             self.game_labels.append(label_half2)
+            if self.features == "frames":
+                self.game_frames.append(frames_feat_1)
+                self.game_frames.append(frames_feat_2)
 
         self.game_feats = np.concatenate(self.game_feats)
         self.game_labels = np.concatenate(self.game_labels)
+        if self.features == "frames":
+            self.game_frames = np.concatenate(self.game_frames)
+
 
 
 
@@ -151,10 +190,16 @@ class SoccerNetClips(Dataset):
             clip_labels (np.array): clip of labels for the segmentation.
             clip_targets (np.array): clip of targets for the spotting.
         """
-        return self.game_feats[index,:,:], self.game_labels[index,:]
+        if self.features == "frames":
+            return self.game_frames[index, :, :, :], self.game_labels[index//(self.window_size_frame*2), :]
+        else:
+            return self.game_feats[index,:,:], self.game_labels[index,:]
 
     def __len__(self):
-        return len(self.game_feats)
+        if self.features == "frames":
+            return len(self.game_frames)
+        else:
+            return len(self.game_feats)
 
 
 class SoccerNetClipsTesting(Dataset):
@@ -199,7 +244,7 @@ class SoccerNetClipsTesting(Dataset):
         """
         # Load features
         if self.features == "custom_vit":
-            game_feature_path = self.listGames[index].replace('\\', '_')
+            game_feature_path = self.listGames[index].replace(os.path.sep, '_')
             feat_half1 = np.load(os.path.join(self.custom_feature_path, f"{game_feature_path}_1.npy"))
             feat_half1 = feat_half1.reshape(-1, feat_half1.shape[-1])
             feat_half2 = np.load(os.path.join(self.custom_feature_path, f"{game_feature_path}_2.npy"))

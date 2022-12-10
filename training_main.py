@@ -7,23 +7,15 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 import torch
 
-from dataset import SoccerNetClips, SoccerNetClipsTesting #,SoccerNetClipsOld
-from model import Model
-from attention_model import AttentionModel
-from RMSNET import RMSNetModel
+from training_modules.dataset import SoccerNetClips, SoccerNetClipsTesting #,SoccerNetClipsOld
+from training_modules.model import Model
+from training_modules.attention_model import AttentionModel
+from training_modules.RMSNET import RMSNetModel
 from train import trainer, test, testSpotting
-from loss import NLLLoss, reweight, FocalLoss
+from training_modules.loss import NLLLoss, reweight, FocalLoss
 
 
 def main(args):
-
-
-    if torch.backends.mps.is_available():
-        device = torch.device("mps")
-    elif torch.cuda.is_available():
-        device = torch.device("cuda")
-    else:
-        device = torch.device("cpu")
 
     logging.info("Parameters:")
     for arg in vars(args):
@@ -49,18 +41,18 @@ def main(args):
                         num_frames=args.window_size*args.framerate, 
                         num_heads=8,
                         num_classes = dataset_Test.num_classes,
-                        dropout=0.45).to(device)
+                        dropout=0.45).to(args.device)
 
     elif ml_model_name == "RMSNet":
         model = RMSNetModel(feature_size=args.feature_dim,
                         num_frames=args.window_size*args.framerate, 
                         num_classes = dataset_Test.num_classes,
-                        dropout=0.45).to(device)
+                        dropout=0.45).to(args.device)
     else:
         model = Model(weights=args.load_weights, input_size=args.feature_dim,
                     num_classes=dataset_Test.num_classes, window_size=args.window_size, 
                     vocab_size = args.vocab_size,
-                    framerate=args.framerate, pool=args.pool).to(device)
+                    framerate=args.framerate, pool=args.pool).to(args.device)
 
     logging.info(model)
     total_params = sum(p.numel()
@@ -97,7 +89,7 @@ def main(args):
             gamma = 1
         else:
             gamma = 0
-        per_cls_weights = reweight(dict(Counter(train_loader.dataset.game_labels.argmax(axis=1))), beta=beta).to(device)
+        per_cls_weights = reweight(dict(Counter(train_loader.dataset.game_labels.argmax(axis=1))), beta=beta).to(args.device)
         # print(per_cls_weights)
         # criterion = NLLLoss()
         # criterion = torch.nn.CrossEntropyLoss()
@@ -110,12 +102,11 @@ def main(args):
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', verbose=True, patience=args.patience)
 
         # start training
-        model_save_path = args.custom_feature_path.replace("vit_features", "project_artefacts")
         trainer(train_loader, val_loader, val_metric_loader, 
                 model, optimizer, scheduler, criterion,
                 model_name=args.model_name,
-                max_epochs=args.max_epochs, evaluation_frequency=args.evaluation_frequency, device = device,
-                model_save_path = model_save_path)
+                max_epochs=args.max_epochs, evaluation_frequency=args.evaluation_frequency, device = args.device,
+                model_save_path = args.model_save_path)
 
     # Free up some RAM memory
     if not args.test_only:
@@ -123,7 +114,7 @@ def main(args):
         del train_loader, val_loader, val_metric_loader
 
     # For the best model only
-    checkpoint = torch.load(os.path.join(model_save_path, args.model_name, "model.pth.tar"))
+    checkpoint = torch.load(os.path.join(args.model_save_path, "model.pth.tar"))
     model.load_state_dict(checkpoint['state_dict'])
 
     # test on multiple splits [test/challenge]
@@ -134,7 +125,7 @@ def main(args):
             batch_size=1, shuffle=False,)
             # num_workers=1, pin_memory=True)
 
-        results = testSpotting(test_loader, model=model, model_name=args.model_name, NMS_window=args.NMS_window, NMS_threshold=args.NMS_threshold, device=device)
+        results = testSpotting(test_loader, model=model, model_name=args.model_name, NMS_window=args.NMS_window, NMS_threshold=args.NMS_threshold, device=args.device, model_save_path = args.custom_feature_path.replace("vit_features", "project_artefacts"))
         if results is None:
             continue
 
@@ -185,8 +176,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--batch_size', required=False, type=int,   default=256,     help='Batch size' )
     parser.add_argument('--LR',       required=False, type=float,   default=1e-03, help='Learning Rate' )
-    parser.add_argument('--LRe',       required=False, type=float,   default=1e-06
-, help='Learning Rate end' )
+    parser.add_argument('--LRe',       required=False, type=float,   default=1e-06, help='Learning Rate end' )
     parser.add_argument('--patience', required=False, type=int,   default=10,     help='Patience before reducing LR (ReduceLROnPlateau)' )
 
     parser.add_argument('--GPU',        required=False, type=int,   default="0",     help='ID of the GPU to use' )
@@ -199,6 +189,15 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    if torch.backends.mps.is_available():
+        device = torch.device("mps")
+    elif torch.cuda.is_available():
+        device = torch.device("cuda")
+    else:
+        device = torch.device("cpu")
+
+    args.device = device
+
     # for reproducibility
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
@@ -207,8 +206,20 @@ if __name__ == '__main__':
     if not isinstance(numeric_level, int):
         raise ValueError('Invalid log level: %s' % args.loglevel)
     model_save_path = args.custom_feature_path.replace("vit_features", "project_artefacts")
+
     os.makedirs(os.path.join(model_save_path, args.model_name), exist_ok=True)
-    log_path = os.path.join(model_save_path, args.model_name,
+    available_runs = os.listdir(os.path.join(model_save_path, args.model_name))
+    max_run = 0
+    for run in available_runs:
+        if run == ".DS_Store": continue
+        cur_run = int(run.split("_")[-1])
+        if cur_run > max_run:
+            max_run=cur_run
+    max_run+=1
+    model_save_path = os.path.join(model_save_path, args.model_name, "_".join([str(args.device), "run", str(max_run)]))
+    os.makedirs(model_save_path)
+    args.model_save_path = model_save_path
+    log_path = os.path.join(model_save_path,
                             datetime.now().strftime('%Y-%m-%d_%H-%M-%S.log'))
     logging.basicConfig(
         level=numeric_level,

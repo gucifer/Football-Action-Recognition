@@ -5,10 +5,10 @@ import numpy as np
 from tqdm import tqdm
 from torchvision.models.feature_extraction import create_feature_extractor
 from torch.utils.data import DataLoader
-from FrameData import *
+from data.FrameData import *
 import argparse
-from ModifiedVideoDownloader import *
-from FrameExtractorCropper import *
+from data.ModifiedVideoDownloader import *
+from data.FrameExtractorCropper import *
 
 
 
@@ -53,6 +53,7 @@ if __name__ == "__main__":
     workers = args.workers
 
     model_weights = models.ViT_B_16_Weights.IMAGENET1K_SWAG_LINEAR_V1
+    transformer_func = model_weights.transforms()
     model = models.vit_b_16(weights=model_weights, progress=True).to(device)
     model.eval()
     return_nodes = {"encoder.layers.encoder_layer_11": "encode11"}
@@ -79,11 +80,10 @@ if __name__ == "__main__":
         
         all_features = []
         with torch.no_grad():
-            for it, trans_attrs in enumerate(tqdm(loader)):
-                transformer_func = model_weights.transforms()
-                transformed_trans_attrs = transformer_func(trans_attrs)
-                transformed_trans_attrs = transformed_trans_attrs.to(device)
-                features = feat_model(transformed_trans_attrs)
+            for it, attrs in enumerate(tqdm(loader)):
+                transformed_attrs = transformer_func(attrs)
+                transformed_attrs = transformed_attrs.to(device)
+                features = feat_model(transformed_attrs)
                 encode_feats = features["encode11"][:, 0]
                 all_features.append(encode_feats.cpu())
                 
