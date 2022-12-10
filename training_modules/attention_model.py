@@ -2,10 +2,12 @@ import torch
 import torch.nn as nn
 from netvlad import NetVLAD
 
+
 class AttentionModel(nn.Module):
     def __init__(self, feature_size, num_frames, num_heads, num_classes, dropout):
         super(AttentionModel,self).__init__()
         self.feature_size = feature_size
+
         self.attention_1 = nn.MultiheadAttention(self.feature_size,num_heads,dropout=dropout, batch_first=True)
         self.linear_net = nn.Sequential(
             nn.Linear(feature_size, 1024),
@@ -66,5 +68,4 @@ class AttentionModel(nn.Module):
         positions = torch.tensor([[i for i in range(inputs.shape[1])]]*inputs.shape[0]).cuda()
         embeddings = inputs + self.pos_embedding(positions)
         return embeddings
-
 

@@ -8,7 +8,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 from netvlad import NetVLAD, NetRVLAD
+
 
 
 class Model(nn.Module):
@@ -81,6 +83,7 @@ class Model(nn.Module):
 
         self.drop1 = nn.Dropout(p=0.2)
         self.drop2 = nn.Dropout(p=0.4)
+
         self.sigm = nn.Sigmoid()
 
         self.load_weights(weights=weights)
@@ -127,7 +130,9 @@ class Model(nn.Module):
 
 
         # Extra FC layer with dropout and sigmoid activation
+
         output = self.sigm(self.fc(self.drop2(inputs_pooled)))
+
 
         return output
 
