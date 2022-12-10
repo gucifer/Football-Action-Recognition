@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .netvlad import NetVLAD, NetRVLAD
+from ..training_modules.netvlad import NetVLAD, NetRVLAD
 
 
 class Model(nn.Module):

@@ -8,7 +8,7 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 import torch
 
 from training_modules.dataset import SoccerNetClips, SoccerNetClipsTesting #,SoccerNetClipsOld
-from training_modules.model import Model
+from src.model import Model
 from training_modules.attention_model import AttentionModel
 from training_modules.RMSNET import RMSNetModel
 from train import trainer, test, testSpotting
