@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from netvlad import NetVLAD
+from .netvlad import NetVLAD
 
 
 class AttentionModel(nn.Module):
