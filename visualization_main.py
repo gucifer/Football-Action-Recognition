@@ -6,7 +6,7 @@ import captum.attr as ct_attr
 import os
 from training_modules.dataset import SoccerNetClips, INVERSE_EVENT_DICTIONARY_V2
 from tqdm import tqdm
-from src.model import Model
+from training_modules.model import Model
 from training_modules.attention_model import AttentionModel
 import argparse
 from model_visualization.captum_utils import visualize_attr_maps
