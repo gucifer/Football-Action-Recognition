@@ -4,9 +4,10 @@ from .netvlad import NetVLAD
 
 
 class AttentionModel(nn.Module):
-    def __init__(self, feature_size, num_frames, num_heads, num_classes, dropout):
+    def __init__(self, feature_size, num_frames, num_heads, num_classes, dropout, device):
         super(AttentionModel,self).__init__()
         self.feature_size = feature_size
+        self.device = device
 
         self.attention_1 = nn.MultiheadAttention(self.feature_size,num_heads,dropout=dropout, batch_first=True)
         self.linear_net = nn.Sequential(
@@ -15,7 +16,7 @@ class AttentionModel(nn.Module):
             nn.Linear(1024, self.feature_size),
         )
         self.final_layer = nn.Linear(self.feature_size, 128)
-        self.pos_embedding = nn.Embedding(num_frames, self.feature_size).cuda()
+        self.pos_embedding = nn.Embedding(num_frames, self.feature_size).to(device)
 
         self.sigm = nn.Sigmoid()
         self.norm_1 = nn.LayerNorm(normalized_shape=(num_frames, feature_size))
@@ -65,7 +66,7 @@ class AttentionModel(nn.Module):
 
     def embed(self, inputs):
         embeddings = None
-        positions = torch.tensor([[i for i in range(inputs.shape[1])]]*inputs.shape[0]).cuda()
+        positions = torch.tensor([[i for i in range(inputs.shape[1])]]*inputs.shape[0]).to(self.device)
         embeddings = inputs + self.pos_embedding(positions)
         return embeddings
 
