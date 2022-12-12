@@ -83,5 +83,7 @@ if __name__ == "__main__":
                         actual_label = labels.cpu().detach().numpy()[0]
                         attrs = attrs.permute(0, 2, 3, 1)
                         correctness = "correct" if actual_label == pred_label else "incorrect"
+                        if INVERSE_EVENT_DICTIONARY_V2[actual_label] == "Background":
+                            continue
                         classif = "-".join(INVERSE_EVENT_DICTIONARY_V2[actual_label].split(" ")) + "_" + correctness
                         visualize_attr_maps(os.path.join(visual_save_path, f"{it}_{classif}.png"), attrs, INVERSE_EVENT_DICTIONARY_V2[actual_label], [attribution.cpu()], [visualizer.get_name()], N = 5)

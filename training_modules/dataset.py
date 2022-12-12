@@ -75,7 +75,12 @@ class SoccerNetClips(Dataset):
         # game_counter = 0
         for it, game in enumerate(tqdm(self.listGames)):
             # Load features
-            if it==1 and self.features == "frames": break
+            test_games_list = getListGames("test")
+            if game in test_games_list:
+                pass
+            else:
+                continue
+            # if it==1 and self.features == "frames": break
             if self.features == "custom_vit":
                 game_feature_path = game.replace(os.path.sep, '_')
 

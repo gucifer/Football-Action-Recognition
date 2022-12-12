@@ -41,7 +41,7 @@ def main(args):
                         num_frames=args.window_size*args.framerate, 
                         num_heads=8,
                         num_classes = dataset_Test.num_classes,
-                        dropout=0.45).to(args.device)
+                        dropout=0.45, device=args.device).to(args.device)
 
     elif ml_model_name == "RMSNet":
         model = RMSNetModel(feature_size=args.feature_dim,
@@ -213,11 +213,14 @@ if __name__ == '__main__':
     for run in available_runs:
         if run == ".DS_Store": continue
         cur_run = int(run.split("_")[-1])
-        if cur_run > max_run:
+        run_dev = run.split("_")[0]
+        if cur_run > max_run and run_dev == str(device):
             max_run=cur_run
-    max_run+=1
+    
+    if not args.test_only:
+        max_run+=1
     model_save_path = os.path.join(model_save_path, args.model_name, "_".join([str(args.device), "run", str(max_run)]))
-    os.makedirs(model_save_path)
+    os.makedirs(model_save_path, exist_ok=True)
     args.model_save_path = model_save_path
     log_path = os.path.join(model_save_path,
                             datetime.now().strftime('%Y-%m-%d_%H-%M-%S.log'))
