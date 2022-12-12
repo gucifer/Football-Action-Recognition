@@ -45,45 +45,46 @@ if __name__ == "__main__":
     ]
     
     saved_models = os.listdir(args.artefacts_path)
-    dataset = SoccerNetClips(path=args.SoccerNet_path, features="frames", custom_feature_path=args.frames_path)
+    dataset = SoccerNetClips(path=args.SoccerNet_path, features="frames", custom_feature_path=args.frames_path, split="test")
     data_loader = DataLoader(dataset, batch_size=args.batch_size)
-    for model in saved_models:
-        if model == ".DS_Store": continue
-        model_name, feat, loss, *_ = model.split("_")
-        print(f"Running: {model_name}.{feat}.{loss}")
-        if feat != "vit": continue
-        runs = os.listdir(os.path.join(args.artefacts_path, model))
-        for run in runs:
-            if "mps" in run:
-                if model_name == "NetVLAD++":
-                    classification_model = Model(input_size=768, num_classes=17, window_size=15, vocab_size = 64, framerate=2, pool="NetVLAD++")
-                elif model_name == "ATTENTION":
-                    classification_model = AttentionModel(feature_size=768, num_frames=30, num_heads=8, num_classes = 17, dropout=0.45)
-                else:
-                    continue
-                classification_model_checkpoint = torch.load(os.path.join(args.artefacts_path, model, run, "model.pth.tar"))
-                classification_model.load_state_dict(classification_model_checkpoint['state_dict'])
-                full_model = FullModel(classification_model, device)
-                for param in full_model.parameters():
-                    param.requires_grad = True
-                for visualizer in visualizers:
-                    visual_save_path = os.path.join(args.artefacts_path, model, run, "_".join(visualizer.get_name().split(" ")))
-                    os.makedirs(visual_save_path, exist_ok=True)
-                    # algo = visualizer(full_model, full_model.classification_model.fc)
-                    # algo = visualizer(full_model, full_model.feature_model.encoder.layers.encoder_layer_1)
-                    algo = visualizer(full_model, full_model.feature_model.conv_proj)
-                    for it, (attrs, labels) in enumerate(tqdm(data_loader)):
-                        transformed_attrs = full_model.preprocess(attrs).to(device)
-                        out = torch.argmax(full_model(transformed_attrs), dim=1)
-                        pred_label = out.cpu().detach().numpy()[0] - 1
-                        labels = labels.to(device)
-                        cp_labels = torch.argmax(labels, dim=1)[::30]
-                        attribution = algo.attribute(transformed_attrs, target = cp_labels)
-                        labels = torch.argmax(labels, dim=1) - 1
-                        actual_label = labels.cpu().detach().numpy()[0]
-                        attrs = attrs.permute(0, 2, 3, 1)
-                        correctness = "correct" if actual_label == pred_label else "incorrect"
-                        if INVERSE_EVENT_DICTIONARY_V2[actual_label] == "Background":
-                            continue
-                        classif = "-".join(INVERSE_EVENT_DICTIONARY_V2[actual_label].split(" ")) + "_" + correctness
-                        visualize_attr_maps(os.path.join(visual_save_path, f"{it}_{classif}.png"), attrs, INVERSE_EVENT_DICTIONARY_V2[actual_label], [attribution.cpu()], [visualizer.get_name()], N = 5)
+    # for model in saved_models:
+    model = "NetVLAD++_vit_CE"
+    # if model == ".DS_Store": continue
+    model_name, feat, loss, *_ = model.split("_")
+    print(f"Running: {model_name}.{feat}.{loss}")
+    # if feat != "vit": continue
+    runs = os.listdir(os.path.join(args.artefacts_path, model))
+    for run in runs:
+        if "mps" in run:
+            if model_name == "NetVLAD++":
+                classification_model = Model(input_size=768, num_classes=17, window_size=15, vocab_size = 64, framerate=2, pool="NetVLAD++")
+            elif model_name == "ATTENTION":
+                classification_model = AttentionModel(feature_size=768, num_frames=30, num_heads=8, num_classes = 17, dropout=0.45)
+            else:
+                continue
+            classification_model_checkpoint = torch.load(os.path.join(args.artefacts_path, model, run, "model.pth.tar"))
+            classification_model.load_state_dict(classification_model_checkpoint['state_dict'])
+            full_model = FullModel(classification_model, device)
+            for param in full_model.parameters():
+                param.requires_grad = True
+            for visualizer in visualizers:
+                visual_save_path = os.path.join(args.artefacts_path, model, run, "_".join(visualizer.get_name().split(" ")))
+                os.makedirs(visual_save_path, exist_ok=True)
+                # algo = visualizer(full_model, full_model.classification_model.fc)
+                # algo = visualizer(full_model, full_model.feature_model.encoder.layers.encoder_layer_1)
+                algo = visualizer(full_model, full_model.feature_model.conv_proj)
+                for it, (attrs, labels) in enumerate(tqdm(data_loader)):
+                    transformed_attrs = full_model.preprocess(attrs).to(device)
+                    out = torch.argmax(full_model(transformed_attrs), dim=1)
+                    pred_label = out.cpu().detach().numpy()[0] - 1
+                    labels = labels.to(device)
+                    cp_labels = torch.argmax(labels, dim=1)[::30]
+                    attribution = algo.attribute(transformed_attrs, target = cp_labels)
+                    labels = torch.argmax(labels, dim=1) - 1
+                    actual_label = labels.cpu().detach().numpy()[0]
+                    attrs = attrs.permute(0, 2, 3, 1)
+                    correctness = "correct" if actual_label == pred_label else "incorrect"
+                    if INVERSE_EVENT_DICTIONARY_V2[actual_label] == "Background":
+                        continue
+                    classif = "-".join(INVERSE_EVENT_DICTIONARY_V2[actual_label].split(" ")) + "_" + correctness
+                    visualize_attr_maps(os.path.join(visual_save_path, f"{it}_{classif}.png"), attrs, INVERSE_EVENT_DICTIONARY_V2[actual_label], [attribution.cpu()], [visualizer.get_name()], N = 5)
