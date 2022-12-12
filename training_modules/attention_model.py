@@ -9,9 +9,13 @@ class AttentionModel(nn.Module):
         self.feature_size = feature_size
         self.device = device
 
+        if not self.feature_size == 512:   
+            self.feature_extractor = nn.Linear(self.feature_size, 512)
+            self.feature_size = 512
+
         self.attention_1 = nn.MultiheadAttention(self.feature_size,num_heads,dropout=dropout, batch_first=True)
         self.linear_net = nn.Sequential(
-            nn.Linear(feature_size, 1024),
+            nn.Linear(self.feature_size, 1024),
             nn.ReLU(inplace=True),
             nn.Linear(1024, self.feature_size),
         )
@@ -19,7 +23,7 @@ class AttentionModel(nn.Module):
         self.pos_embedding = nn.Embedding(num_frames, self.feature_size).to(device)
 
         self.sigm = nn.Sigmoid()
-        self.norm_1 = nn.LayerNorm(normalized_shape=(num_frames, feature_size))
+        self.norm_1 = nn.LayerNorm(normalized_shape=(num_frames, self.feature_size))
         self.f_class = nn.Linear(num_frames*128, num_classes+1)
         # self.global_pooling = nn.GlobalAveragePooling()
         
@@ -28,14 +32,21 @@ class AttentionModel(nn.Module):
         self.drop_1 = nn.Dropout(0.2)
         self.drop_2 = nn.Dropout(0.3)
         self.drop_3 = nn.Dropout(0.4)
-        self.pool_layer_before = NetVLAD(cluster_size=int(self.vlad_k/2), feature_size=feature_size,
+        self.pool_layer_before = NetVLAD(cluster_size=int(self.vlad_k/2), feature_size=self.feature_size,
                                             add_batch_norm=True)
-        self.pool_layer_after = NetVLAD(cluster_size=int(self.vlad_k/2), feature_size=feature_size,
+        self.pool_layer_after = NetVLAD(cluster_size=int(self.vlad_k/2), feature_size=self.feature_size,
                                         add_batch_norm=True)
-        self.fc = nn.Linear(feature_size*self.vlad_k, num_classes+1)
+        self.fc = nn.Linear(self.feature_size*self.vlad_k, num_classes+1)
 
 
     def forward(self,x):
+
+        BS, FR, IC = x.shape
+        if not IC == 512:
+            x = x.reshape(BS*FR, IC)
+            x = self.feature_extractor(x)
+            x = x.reshape(BS, FR, -1)
+
         out = self.embed(x)
         out = self.drop_1(out)
         out, attn = self.attention_1(out,out,out)
