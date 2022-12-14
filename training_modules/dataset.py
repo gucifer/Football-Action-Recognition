@@ -44,7 +44,7 @@ def feats2clip(feats, stride, clip_length, padding = "replicate_last", off=0):
 class SoccerNetClips(Dataset):
 
     def __init__(self, path, features="ResNET_PCA512.npy", split=["train"], version=2, 
-                framerate=2, window_size=15, custom_feature_path="C:\\Users\\91995\\OneDrive - Georgia Institute of Technology\\vit_features"):
+                framerate=2, window_size=15, custom_feature_path="C:\\Users\\91995\\OneDrive - Georgia Institute of Technology\\vit_features", n = 500):
         self.path = path
         self.listGames = getListGames(split)
         self.features = features
@@ -84,6 +84,7 @@ class SoccerNetClips(Dataset):
 
 
             elif self.features == "frames":
+                if it>n:break
                 game_feature_path = game.replace(os.path.sep, '_')
                 feat_half1_path = os.path.join(self.custom_feature_path, game_feature_path + "_1")
                 feat_half2_path = os.path.join(self.custom_feature_path, game_feature_path + "_2")
@@ -170,15 +171,22 @@ class SoccerNetClips(Dataset):
             self.game_feats.append(feat_half2)
             self.game_labels.append(label_half1)
             self.game_labels.append(label_half2)
+            feat_half1 = None
+            feat_half2 = None
+            label_half1 = None
+            label_half2 = None
 
             if self.features == "frames":
                 self.game_frames.append(frames_feat_1)
                 self.game_frames.append(frames_feat_2)
+                frames_feat_1 = None
+                frames_feat_2 = None
 
         self.game_feats = np.concatenate(self.game_feats)
         self.game_labels = np.concatenate(self.game_labels)
         if self.features == "frames":
             self.game_frames = np.concatenate(self.game_frames)
+            self.game_feats = None
 
 
 
@@ -195,7 +203,7 @@ class SoccerNetClips(Dataset):
         """
 
         if self.features == "frames":
-            return self.game_frames[index, :, :, :], self.game_labels[index//(self.window_size_frame*2), :]
+            return self.game_frames[index, :, :, :], self.game_labels[index//(self.window_size_frame), :]
         else:
             return self.game_feats[index,:,:], self.game_labels[index,:]
 
